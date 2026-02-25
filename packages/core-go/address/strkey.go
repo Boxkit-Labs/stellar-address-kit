@@ -5,14 +5,19 @@ import (
 	"strings"
 )
 
-// Version bytes for different strkey types
+// Version bytes for different strkey types.
 const (
 	VersionByteG = 6 << 3  // G addresses (ed25519 public key)
 	VersionByteM = 12 << 3 // M addresses (muxed account)
 	VersionByteC = 2 << 3  // C addresses (contract)
+
+	// Aliases for clarity in other packages.
+	VersionByteAccountID    = VersionByteG
+	VersionByteMuxedAccount = VersionByteM
+	VersionByteContract     = VersionByteC
 )
 
-// CRC-16 XMODEM table for checksum calculation
+// CRC-16 XMODEM table for checksum calculation.
 var crc16Table = [256]uint16{
 	0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
 	0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef,
@@ -48,7 +53,7 @@ var crc16Table = [256]uint16{
 	0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0,
 }
 
-// calculateCRC16XModem calculates CRC-16 XMODEM checksum
+// calculateCRC16XModem calculates CRC-16 XMODEM checksum.
 func calculateCRC16XModem(data []byte) uint16 {
 	crc := uint16(0)
 	for _, b := range data {
@@ -59,53 +64,51 @@ func calculateCRC16XModem(data []byte) uint16 {
 	return crc
 }
 
-// decodeStrKey decodes a strkey address and returns version byte, payload, and error
+// DecodeStrKey decodes a strkey address and returns version byte and payload.
 func DecodeStrKey(address string) (versionByte byte, payload []byte, err error) {
 	if address == "" {
 		return 0, nil, ErrInvalidLengthError
 	}
 
-	// Convert to uppercase for base32 decoding
+	// Convert to uppercase for base32 decoding.
 	address = strings.ToUpper(address)
 
-	// Check basic length constraints
+	// Check basic length constraints.
 	if len(address) < 3 {
 		return 0, nil, ErrInvalidLengthError
 	}
 
-	// Base32 decode without padding
+	// Base32 decode without padding.
 	decoder := base32.StdEncoding.WithPadding(base32.NoPadding)
 	decoded, err := decoder.DecodeString(address)
 	if err != nil {
 		return 0, nil, ErrInvalidBase32Error
 	}
 
-	// Verify round-trip encoding to catch invalid inputs
-	// This is required by SEP-23 to reject strings that don't re-encode to the same string
+	// Verify round-trip encoding to catch invalid inputs.
 	reencoded := decoder.EncodeToString(decoded)
 	if reencoded != address {
 		return 0, nil, ErrInvalidBase32Error
 	}
 
-	// Minimum length: version byte (1) + payload (at least 1) + checksum (2)
+	// Minimum length: version byte (1) + payload (at least 1) + checksum (2).
 	if len(decoded) < 4 {
 		return 0, nil, ErrInvalidLengthError
 	}
 
-	// Extract version byte, payload, and checksum
+	// Extract version byte, payload, and checksum.
 	versionByte = decoded[0]
 	payload = decoded[:len(decoded)-2]
 	checksum := decoded[len(decoded)-2:]
 
-	// Validate version byte
+	// Validate version byte.
 	switch versionByte {
 	case VersionByteG, VersionByteM, VersionByteC:
-		// Valid version bytes
 	default:
 		return 0, nil, ErrUnknownVersionByteError
 	}
 
-	// Calculate and verify checksum
+	// Calculate and verify checksum.
 	expectedCRC := calculateCRC16XModem(payload)
 	expectedChecksum := []byte{byte(expectedCRC & 0xff), byte((expectedCRC >> 8) & 0xff)}
 
@@ -113,25 +116,21 @@ func DecodeStrKey(address string) (versionByte byte, payload []byte, err error) 
 		return 0, nil, ErrInvalidChecksumError
 	}
 
-	// Return payload without version byte
+	// Return payload without version byte.
 	return versionByte, payload[1:], nil
 }
 
-// encodeStrKey encodes a payload with a version byte and checksum
+// EncodeStrKey encodes a payload with a version byte and checksum.
 func EncodeStrKey(versionByte byte, payload []byte) (string, error) {
-	// Create versioned payload
 	versionedPayload := make([]byte, 1+len(payload))
 	versionedPayload[0] = versionByte
 	copy(versionedPayload[1:], payload)
 
-	// Calculate checksum
 	crc := calculateCRC16XModem(versionedPayload)
 	checksum := []byte{byte(crc & 0xff), byte((crc >> 8) & 0xff)}
 
-	// Append checksum
 	fullPayload := append(versionedPayload, checksum...)
 
-	// Base32 encode without padding
 	encoder := base32.StdEncoding.WithPadding(base32.NoPadding)
 	return encoder.EncodeToString(fullPayload), nil
 }
