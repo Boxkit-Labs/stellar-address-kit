@@ -12,7 +12,8 @@ describe("Normative Vector Tests", () => {
           break;
         }
         case "muxed_encode": {
-          const mAddress = encodeMuxed(c.input.gAddress, c.input.id);
+          const baseG = c.input.base_g ?? c.input.gAddress;
+          const mAddress = encodeMuxed(baseG, c.input.id);
           expect(mAddress).toBe(c.expected.mAddress);
           break;
         }

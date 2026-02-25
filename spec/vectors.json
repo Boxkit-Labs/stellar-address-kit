@@ -3,18 +3,63 @@
   "cases": [
     {
       "module": "muxed_encode",
-      "description": "id above JS 2^53 safe integer — interop canary",
+      "description": "encode id=0: minimum uint64 boundary; ensures zero-padding and no off-by-one in id encoding",
       "input": {
-        "gAddress": "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1",
+        "base_g": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "id": "0"
+      },
+      "expected": {
+        "mAddress": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACAAAAAAAAAAAAD672"
+      },
+      "tags": ["positive", "edge"]
+    },
+    {
+      "module": "muxed_encode",
+      "description": "encode id=1: smallest positive id; exercises single-byte id encoding",
+      "input": {
+        "base_g": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "id": "1"
+      },
+      "expected": {
+        "mAddress": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACAAAAAAAAAAAAHOO2"
+      },
+      "tags": ["positive", "edge"]
+    },
+    {
+      "module": "muxed_encode",
+      "description": "encode id=2^53: JavaScript Number safe-integer boundary; last id representable exactly as JS number",
+      "input": {
+        "base_g": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "id": "9007199254740992"
+      },
+      "expected": {
+        "mAddress": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACABAAAAAAAAAAAFZG"
+      },
+      "tags": ["positive", "edge", "interop"]
+    },
+    {
+      "module": "muxed_encode",
+      "description": "encode id=2^53+1: above JS safe integer; requires string/BigInt to avoid silent corruption; interop canary",
+      "input": {
+        "base_g": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
         "id": "9007199254740993"
       },
       "expected": {
-        "mAddress": "MA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1AAJZRE6LRE6LRE6LRE6LRE6LRE6LRE6LRE6LRE6LRE6LRE6LR"
+        "mAddress": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACABAAAAAAAAAAEVIG"
       },
-      "tags": [
-        "edge",
-        "interop"
-      ]
+      "tags": ["positive", "edge", "interop"]
+    },
+    {
+      "module": "muxed_encode",
+      "description": "encode id=2^64-1: maximum uint64; proves full range support and no truncation",
+      "input": {
+        "base_g": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "id": "18446744073709551615"
+      },
+      "expected": {
+        "mAddress": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQAD7777777777774OFW"
+      },
+      "tags": ["positive", "edge", "interop"]
     },
     {
       "module": "muxed_decode",
