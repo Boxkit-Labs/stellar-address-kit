@@ -1,11 +1,16 @@
 import { detect } from "./detect";
+import type { AddressKind } from "./types";
 
-export function validate(
-  address: string,
-  options?: { strict?: boolean },
-): boolean {
-  const kind = detect(address);
-  if (kind === "invalid") return false;
-  if (options?.strict && address !== address.toUpperCase()) return false;
-  return true;
+export function validate(address: string, kind?: AddressKind): boolean {
+  const detected = detect(address);
+
+  if (detected === "invalid") {
+    return false
+  };
+
+  if (kind === undefined) {
+    return true;
+  };
+
+  return detected === kind;
 }

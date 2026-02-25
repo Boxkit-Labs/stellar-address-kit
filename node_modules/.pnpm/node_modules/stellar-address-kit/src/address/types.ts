@@ -1,3 +1,5 @@
+export type AddressKind = "G" | "M" | "C";
+
 export type ErrorCode =
   | "INVALID_CHECKSUM"
   | "INVALID_LENGTH"
@@ -21,46 +23,46 @@ export type WarningCode =
 
 export type Warning =
   | {
-      code: "NON_CANONICAL_ADDRESS" | "NON_CANONICAL_ROUTING_ID";
-      severity: "warn";
-      message: string;
-      normalization: { original: string; normalized: string };
-    }
+    code: "NON_CANONICAL_ADDRESS" | "NON_CANONICAL_ROUTING_ID";
+    severity: "warn";
+    message: string;
+    normalization: { original: string; normalized: string };
+  }
   | {
-      code: "INVALID_DESTINATION";
-      severity: "error";
-      message: string;
-      context: { destinationKind: "C" };
-    }
+    code: "INVALID_DESTINATION";
+    severity: "error";
+    message: string;
+    context: { destinationKind: "C" };
+  }
   | {
-      code: "UNSUPPORTED_MEMO_TYPE";
-      severity: "warn";
-      message: string;
-      context: { memoType: "hash" | "return" | "unknown" };
-    }
+    code: "UNSUPPORTED_MEMO_TYPE";
+    severity: "warn";
+    message: string;
+    context: { memoType: "hash" | "return" | "unknown" };
+  }
   | {
-      code: Exclude<
-        WarningCode,
-        | "NON_CANONICAL_ADDRESS"
-        | "NON_CANONICAL_ROUTING_ID"
-        | "INVALID_DESTINATION"
-        | "UNSUPPORTED_MEMO_TYPE"
-      >;
-      severity: "info" | "warn" | "error";
-      message: string;
-    };
+    code: Exclude<
+      WarningCode,
+      | "NON_CANONICAL_ADDRESS"
+      | "NON_CANONICAL_ROUTING_ID"
+      | "INVALID_DESTINATION"
+      | "UNSUPPORTED_MEMO_TYPE"
+    >;
+    severity: "info" | "warn" | "error";
+    message: string;
+  };
 
 export type ParseResult =
   | {
-      kind: "G" | "M" | "C";
-      address: string;
-      warnings: Warning[];
-    }
+    kind: AddressKind;
+    address: string;
+    warnings: Warning[];
+  }
   | {
-      kind: "invalid";
-      error: {
-        code: ErrorCode;
-        input: string;
-        message: string;
-      };
+    kind: "invalid";
+    error: {
+      code: ErrorCode;
+      input: string;
+      message: string;
     };
+  };

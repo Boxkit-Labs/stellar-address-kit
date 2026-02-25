@@ -10,3 +10,5 @@ export 'src/muxed/decode.dart';
 export 'src/routing/extract.dart';
 export 'src/routing/result.dart';
 export 'src/routing/memo.dart';
+export 'src/muxed/muxed_address.dart';
+export 'src/exceptions.dart';
