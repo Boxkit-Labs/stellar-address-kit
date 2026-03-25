@@ -40,13 +40,18 @@ class StellarAddress {
         return StellarAddress._(
             kind: AddressKind.g, raw: address, baseG: address);
       case AddressKind.m:
-        final decoded = MuxedDecoder.decodeMuxedString(address);
-        return StellarAddress._(
-          kind: AddressKind.m,
-          raw: address,
-          baseG: decoded['baseG'] as String?,
-          muxedId: decoded['id'] as BigInt?,
-        );
+        try {
+          final decoded = MuxedDecoder.decodeMuxedString(address);
+          return StellarAddress._(
+            kind: AddressKind.m,
+            raw: address,
+            baseG: decoded['baseG'] as String?,
+            muxedId: decoded['id'] as BigInt?,
+          );
+        } catch (error, stackTrace) {
+          throw StellarAddressException(
+              'Invalid muxed address: ${error.toString()}');
+        }
       case AddressKind.c:
         return StellarAddress._(kind: AddressKind.c, raw: address);
     }
