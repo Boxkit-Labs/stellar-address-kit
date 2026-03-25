@@ -7,15 +7,15 @@ import (
 )
 
 func DecodeMuxed(mAddress string) (string, string, error) {
-	pubkey, id, err := strkey.DecodeMuxedAccount(mAddress)
+	muxedAccount, err := strkey.DecodeMuxedAccount(mAddress)
 	if err != nil {
 		return "", "", err
 	}
 
-	baseG, err := strkey.Encode(strkey.VersionByteAccountID, pubkey)
+	baseG, err := muxedAccount.AccountID()
 	if err != nil {
 		return "", "", err
 	}
 
-	return baseG, strconv.FormatUint(id, 10), nil
+	return baseG, strconv.FormatUint(muxedAccount.ID(), 10), nil
 }

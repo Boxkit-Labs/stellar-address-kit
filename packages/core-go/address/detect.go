@@ -5,8 +5,14 @@ import (
 )
 
 func Detect(address string) string {
-	if strkey.IsValidEd25519PublicKey(address) { return "G" }
-	if strkey.IsValidMed25519PublicKey(address) { return "M" }
-	if strkey.IsValidContract(address) { return "C" }
+	if strkey.IsValidEd25519PublicKey(address) {
+		return "G"
+	}
+	if strkey.IsValidMuxedAccountEd25519PublicKey(address) {
+		return "M"
+	}
+	if _, err := strkey.Decode(strkey.VersionByteContract, address); err == nil {
+		return "C"
+	}
 	return "invalid"
 }

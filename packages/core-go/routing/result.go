@@ -1,8 +1,10 @@
 package routing
 
 import (
+	"encoding/json"
+	"fmt"
 	"strconv"
-	
+
 	"github.com/stellar-address-kit/core-go/address"
 )
 
@@ -18,6 +20,34 @@ const (
 
 type RoutingID struct {
 	raw string
+}
+
+func (r *RoutingID) UnmarshalJSON(data []byte) error {
+	if r == nil {
+		return fmt.Errorf("routing id: UnmarshalJSON on nil receiver")
+	}
+
+	if string(data) == "null" {
+		r.raw = ""
+		return nil
+	}
+
+	var id string
+	if len(data) > 0 && data[0] == '"' {
+		if err := json.Unmarshal(data, &id); err != nil {
+			return fmt.Errorf("routing id: invalid quoted value: %w", err)
+		}
+	} else {
+		id = string(data)
+	}
+
+	parsed, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		return fmt.Errorf("routing id: invalid uint64 value %q: %w", id, err)
+	}
+
+	r.raw = strconv.FormatUint(parsed, 10)
+	return nil
 }
 
 func (r *RoutingID) String() string {
@@ -36,13 +66,6 @@ func (r *RoutingID) Uint64() (uint64, error) {
 
 func NewRoutingID(s string) *RoutingID {
 	return &RoutingID{raw: s}
-}
-
-type RoutingInput struct {
-	Destination   string
-	MemoType      string
-	MemoValue     *string
-	SourceAccount *string
 }
 
 type RoutingResult struct {
