@@ -6,15 +6,16 @@ func Detect(addr string) (AddressKind, error) {
 		return "", err
 	}
 
-	switch versionByte {
-	case VersionByteG:
-		return KindG, nil
-	case VersionByteM:
-		return KindM, nil
-	case VersionByteC:
-		return KindC, nil
-	default:
-		return "", ErrUnknownVersionByteError
+func Detect(address string) string {
+	if strkey.IsValidEd25519PublicKey(address) {
+		return "G"
 	}
+	if strkey.IsValidMuxedAccountEd25519PublicKey(address) {
+		return "M"
+	}
+	if _, err := strkey.Decode(strkey.VersionByteContract, address); err == nil {
+		return "C"
+	}
+	return "invalid"
 }
 
