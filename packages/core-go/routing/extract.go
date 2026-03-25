@@ -72,6 +72,20 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 		}
 	}
 
+	if input.SourceAccount != "" {
+		sourceKind, err := address.Detect(input.SourceAccount)
+		if err == nil && sourceKind == address.KindC {
+			return RoutingResult{
+				RoutingSource: "none",
+				Warnings: []address.Warning{{
+					Code:     address.WarnContractSenderDetected,
+					Severity: "info",
+					Message:  "Source account is a contract address and cannot be used for routing.",
+				}},
+			}
+		}
+	}
+
 	routingID := ""
 	routingSource := "none"
 	warnings := []address.Warning{}

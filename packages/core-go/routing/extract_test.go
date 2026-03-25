@@ -98,3 +98,41 @@ func TestExtractRouting_SpecVectors(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractRouting_ContractSourceClearsRoutingState(t *testing.T) {
+	contractAddress, err := address.EncodeStrKey(address.VersionByteC, make([]byte, 32))
+	if err != nil {
+		t.Fatalf("failed to generate contract address: %v", err)
+	}
+
+	result := ExtractRouting(RoutingInput{
+		Destination:   "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+		MemoType:      "id",
+		MemoValue:     "100",
+		SourceAccount: contractAddress,
+	})
+
+	if result.DestinationBaseAccount != "" {
+		t.Errorf("DestinationBaseAccount = %v, want empty", result.DestinationBaseAccount)
+	}
+	if result.RoutingID != "" {
+		t.Errorf("RoutingID = %v, want empty", result.RoutingID)
+	}
+	if result.RoutingSource != "none" {
+		t.Errorf("RoutingSource = %v, want none", result.RoutingSource)
+	}
+	if result.DestinationError != nil {
+		t.Errorf("DestinationError = %v, want nil", result.DestinationError)
+	}
+	if len(result.Warnings) != 1 {
+		t.Fatalf("Warnings count = %v, want 1", len(result.Warnings))
+	}
+
+	warning := result.Warnings[0]
+	if warning.Code != address.WarnContractSenderDetected {
+		t.Errorf("Warning code = %v, want %v", warning.Code, address.WarnContractSenderDetected)
+	}
+	if warning.Severity != "info" {
+		t.Errorf("Warning severity = %v, want info", warning.Severity)
+	}
+}
