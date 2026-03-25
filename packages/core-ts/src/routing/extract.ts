@@ -4,6 +4,14 @@ import { decodeMuxed } from "../muxed/decode";
 import { normalizeMemoTextId } from "./memo";
 import { Warning } from "../address/types";
 
+export class ExtractRoutingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ExtractRoutingError";
+    Object.setPrototypeOf(this, ExtractRoutingError.prototype);
+  }
+}
+
 export function extractRouting(input: RoutingInput): RoutingResult {
   const parsed = parse(input.destination);
 
@@ -21,19 +29,7 @@ export function extractRouting(input: RoutingInput): RoutingResult {
   }
 
   if (parsed.kind === "C") {
-    return {
-      destinationBaseAccount: null,
-      routingId: null,
-      routingSource: "none",
-      warnings: [
-        {
-          code: "INVALID_DESTINATION",
-          severity: "error",
-          message: "C address is not a valid destination",
-          context: { destinationKind: "C" },
-        },
-      ],
-    };
+    throw new ExtractRoutingError("Contract addresses cannot be routed");
   }
 
   if (parsed.kind === "M") {
