@@ -14,6 +14,7 @@ export class ExtractRoutingError extends Error {
 
 export function extractRouting(input: RoutingInput): RoutingResult {
   const parsed = parse(input.destination);
+  
 
   if (parsed.kind === "invalid") {
     return {
