@@ -49,7 +49,7 @@ function decodeStrKey(address: string): Uint8Array {
   return data;
 }
 
-export function decodeMuxed(mAddress: string): { baseG: string; id: string } {
+export function decodeMuxed(mAddress: string): { baseG: string; id: bigint } {
   const data = decodeStrKey(mAddress);
   // Layout: [Version(1)] [Pubkey(32)] [ID(8)]
   if (data.length !== 41) throw new Error("invalid payload length");
@@ -64,6 +64,6 @@ export function decodeMuxed(mAddress: string): { baseG: string; id: string } {
 
   return {
     baseG: StrKey.encodeEd25519PublicKey(Buffer.from(pubkey)),
-    id: id.toString(),
+    id: id,
   };
 }

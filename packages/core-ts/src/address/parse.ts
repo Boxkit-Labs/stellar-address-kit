@@ -40,7 +40,7 @@ export function parse(address: string): ParseResult {
         kind: "M",
         address: up,
         baseG: decoded.baseG,
-        muxedId: BigInt(decoded.id),
+        muxedId: decoded.id,
         warnings: [],
       };
     }
