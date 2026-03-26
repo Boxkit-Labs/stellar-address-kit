@@ -81,4 +81,3 @@ export type ParseResult =
     };
 
 export { ErrorCode } from "./errors";
-export { AddressParseError } from "./errors";
