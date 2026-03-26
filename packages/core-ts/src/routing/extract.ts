@@ -12,7 +12,30 @@ export class ExtractRoutingError extends Error {
   }
 }
 
+/**
+ * Validates that the destination string passes the minimum structural
+ * requirements for a Stellar address before routing logic is applied.
+ * Only G-addresses and M-addresses are valid routing targets.
+ * Throws ExtractRoutingError for anything that fails this check.
+ */
+function assertRoutableAddress(destination: string): void {
+  if (!destination || typeof destination !== "string") {
+    throw new ExtractRoutingError(
+      "Invalid input: destination must be a non-empty string."
+    );
+  }
+
+  const prefix = destination.trim()[0]?.toUpperCase();
+  if (prefix !== "G" && prefix !== "M") {
+    throw new ExtractRoutingError(
+      `Invalid destination: expected a G or M address, got "${destination}".`
+    );
+  }
+}
+
 export function extractRouting(input: RoutingInput): RoutingResult {
+  assertRoutableAddress(input.destination);
+
   const parsed = parse(input.destination);
 
   if (parsed.kind === "invalid") {
