@@ -34,10 +34,3 @@ func (e *AddressError) Error() string {
 	return e.Message
 }
 
-// ParseResult represents the result of parsing an address
-type ParseResult struct {
-	Kind     string
-	Address  string
-	Warnings []Warning
-	Err      *AddressError
-}

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Shared JSON test vectors and schema for Stellar Address Kit",
   "main": "index.js",
+  "types": "index.d.ts",
   "files": [
     "vectors.json",
     "schema.json",

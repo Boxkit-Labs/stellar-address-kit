@@ -2,6 +2,8 @@ package routing
 
 import (
 	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/stellar-address-kit/core-go/address"
 	"github.com/stellar-address-kit/core-go/muxed"
@@ -9,21 +11,59 @@ import (
 
 var digitsOnlyRegex = regexp.MustCompile(`^\d+$`)
 
-func ExtractRouting(input RoutingInput) RoutingResult {
-	parsed := address.Parse(input.Destination)
+func normalizeUnsupportedMemoType(memoType string) string {
+	switch memoType {
+	case "hash", "return":
+		return memoType
+	}
 
-	if parsed.Kind == "invalid" {
+	switch strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(memoType, "_", ""), "-", "")) {
+	case "memohash":
+		return "hash"
+	case "memoreturn":
+		return "return"
+	default:
+		return ""
+	}
+}
+
+func ExtractRouting(input RoutingInput) RoutingResult {
+	if input.SourceAccount != "" {
+		source, err := address.Parse(input.SourceAccount)
+		if err == nil && source.Kind == address.KindC {
+			return RoutingResult{
+				RoutingSource: "none",
+				Warnings: []address.Warning{{
+					Code:     address.WarnContractSenderDetected,
+					Severity: "info",
+					Message:  "Contract source detected. Routing state cleared.",
+				}},
+			}
+		}
+	}
+
+	parsed, err := address.Parse(input.Destination)
+	if err != nil {
+		addrErr, ok := err.(*address.AddressError)
+		if !ok {
+			addrErr = &address.AddressError{
+				Code:    address.ErrUnknownPrefix,
+				Input:   input.Destination,
+				Message: err.Error(),
+			}
+		}
+
 		return RoutingResult{
 			RoutingSource: "none",
 			Warnings:      []address.Warning{},
 			DestinationError: &DestinationError{
-				Code:    parsed.Err.Code,
-				Message: parsed.Err.Message,
+				Code:    addrErr.Code,
+				Message: addrErr.Message,
 			},
 		}
 	}
 
-	if parsed.Kind == "C" {
+	if parsed.Kind == address.KindC {
 		return RoutingResult{
 			RoutingSource: "none",
 			Warnings: []address.Warning{{
@@ -37,11 +77,23 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 		}
 	}
 
-	if parsed.Kind == "M" {
-		baseG, id, _ := muxed.DecodeMuxed(parsed.Address)
-		warnings := append([]address.Warning{}, parsed.Warnings...)
+	if parsed.Kind == address.KindM {
+		baseG, id, err := muxed.DecodeMuxed(parsed.Raw)
+		if err != nil {
+			return RoutingResult{
+				RoutingSource: "none",
+				Warnings:      []address.Warning{},
+				DestinationError: &DestinationError{
+					Code:    address.ErrUnknownPrefix,
+					Message: err.Error(),
+				},
+			}
+		}
 
-		if input.MemoType == "id" || (input.MemoType == "text" && input.MemoValue != "" && digitsOnlyRegex.MatchString(input.MemoValue)) {
+		warnings := []address.Warning{}
+		memoValue := input.MemoValue
+
+		if input.MemoType == "id" || (input.MemoType == "text" && digitsOnlyRegex.MatchString(memoValue)) {
 			warnings = append(warnings, address.Warning{
 				Code:     address.WarnMemoPresentWithMuxed,
 				Severity: "warn",
@@ -57,20 +109,21 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 
 		return RoutingResult{
 			DestinationBaseAccount: baseG,
-			RoutingID:              id,
+			RoutingID:              &id,
 			RoutingSource:          "muxed",
 			Warnings:               warnings,
 		}
 	}
 
-	routingID := ""
+	routingID := (*uint64)(nil)
 	routingSource := "none"
-	warnings := append([]address.Warning{}, parsed.Warnings...)
+	warnings := []address.Warning{}
 
 	if input.MemoType == "id" {
 		norm := NormalizeMemoTextID(input.MemoValue)
-		routingID = norm.Normalized
 		if norm.Normalized != "" {
+			parsedID, _ := strconv.ParseUint(norm.Normalized, 10, 64)
+			routingID = &parsedID
 			routingSource = "memo"
 		}
 		warnings = append(warnings, norm.Warnings...)
@@ -85,7 +138,8 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 	} else if input.MemoType == "text" && input.MemoValue != "" {
 		norm := NormalizeMemoTextID(input.MemoValue)
 		if norm.Normalized != "" {
-			routingID = norm.Normalized
+			parsedID, _ := strconv.ParseUint(norm.Normalized, 10, 64)
+			routingID = &parsedID
 			routingSource = "memo"
 			warnings = append(warnings, norm.Warnings...)
 		} else {
@@ -95,13 +149,13 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 				Message:  "MEMO_TEXT was not a valid numeric uint64.",
 			})
 		}
-	} else if input.MemoType == "hash" || input.MemoType == "return" {
+	} else if unsupportedMemoType := normalizeUnsupportedMemoType(input.MemoType); unsupportedMemoType != "" {
 		warnings = append(warnings, address.Warning{
 			Code:     address.WarnUnsupportedMemoType,
 			Severity: "warn",
-			Message:  "Memo type " + input.MemoType + " is not supported for routing.",
+			Message:  "Memo type " + unsupportedMemoType + " is not supported for routing.",
 			Context: &address.WarningContext{
-				MemoType: input.MemoType,
+				MemoType: unsupportedMemoType,
 			},
 		})
 	} else if input.MemoType != "none" {
@@ -116,7 +170,7 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 	}
 
 	return RoutingResult{
-		DestinationBaseAccount: parsed.Address,
+		DestinationBaseAccount: parsed.Raw,
 		RoutingID:              routingID,
 		RoutingSource:          routingSource,
 		Warnings:               warnings,

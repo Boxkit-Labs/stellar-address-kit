@@ -1,39 +1,21 @@
 package muxed
 
 import (
-	"encoding/binary"
-	"errors"
 	"strconv"
 
-	"github.com/stellar-address-kit/core-go/address"
+	"github.com/stellar/go/strkey"
 )
 
 func DecodeMuxed(mAddress string) (string, string, error) {
-	versionByte, payload, err := address.DecodeStrKey(mAddress)
+	muxedAccount, err := strkey.DecodeMuxedAccount(mAddress)
 	if err != nil {
 		return "", "", err
 	}
 
-	if versionByte != address.VersionByteM {
-		return "", "", errors.New("unknown version byte")
-	}
-
-	// For muxed accounts, payload is: 32-byte pubkey + 8-byte memo ID
-	if len(payload) != 40 {
-		return "", "", errors.New("invalid length")
-	}
-
-	// Extract the 32-byte public key
-	pubkey := payload[:32]
-
-	// Extract the 8-byte memo ID (big endian)
-	memoID := binary.BigEndian.Uint64(payload[32:40])
-
-	// Encode the public key as a G address
-	baseG, err := address.EncodeStrKey(address.VersionByteG, pubkey)
+	baseG, err := muxedAccount.AccountID()
 	if err != nil {
 		return "", "", err
 	}
 
-	return baseG, strconv.FormatUint(memoID, 10), nil
+	return baseG, strconv.FormatUint(muxedAccount.ID(), 10), nil
 }

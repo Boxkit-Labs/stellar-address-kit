@@ -74,32 +74,57 @@ func TestDecodeStrKey(t *testing.T) {
 
 func TestDetect(t *testing.T) {
 	tests := []struct {
-		name     string
-		address  string
-		expected string
+		name    string
+		address string
+		kind    AddressKind
+		wantErr bool
 	}{
 		{
-			name:     "Valid G address",
-			address:  "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
-			expected: "G",
+			name:    "Valid G address",
+			address: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+			kind:    KindG,
 		},
 		{
-			name:     "Valid M address",
-			address:  "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACAAAAAAAAAAAAD672",
-			expected: "M",
+			name:    "Valid M address",
+			address: "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACAAAAAAAAAAAAD672",
+			kind:    KindM,
 		},
 		{
-			name:     "Invalid address",
-			address:  "INVALID",
-			expected: "invalid",
+			name: "Valid C address",
+		},
+		{
+			name:    "Invalid address",
+			address: "INVALID",
+			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := Detect(tt.address)
-			if result != tt.expected {
-				t.Errorf("expected %s, got %s", tt.expected, result)
+			addr := tt.address
+			// For C-address test, generate a valid C address dynamically.
+			if tt.name == "Valid C address" {
+				payload := make([]byte, 32)
+				var err error
+				addr, err = EncodeStrKey(VersionByteC, payload)
+				if err != nil {
+					t.Fatalf("failed to generate C address: %v", err)
+				}
+				tt.kind = KindC
+			}
+
+			kind, err := Detect(addr)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("expected error, got none")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if kind != tt.kind {
+				t.Errorf("expected kind %v, got %v", tt.kind, kind)
 			}
 		})
 	}

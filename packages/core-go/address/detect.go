@@ -1,19 +1,19 @@
 package address
 
-func Detect(address string) string {
-	versionByte, _, err := DecodeStrKey(address)
+func Detect(addr string) (AddressKind, error) {
+	versionByte, _, err := DecodeStrKey(addr)
 	if err != nil {
-		return "invalid"
+		return "", err
 	}
 
 	switch versionByte {
 	case VersionByteG:
-		return "G"
+		return KindG, nil
 	case VersionByteM:
-		return "M"
+		return KindM, nil
 	case VersionByteC:
-		return "C"
+		return KindC, nil
 	default:
-		return "invalid"
+		return "", ErrUnknownVersionByteError
 	}
 }

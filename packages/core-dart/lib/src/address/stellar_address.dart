@@ -1,25 +1,8 @@
 import 'package:meta/meta.dart';
-
-/// Defines the underlying type of a Stellar address.
-enum AddressKind {
-  /// G... address (Ed25519 Public Key)
-  g,
-
-  /// M... address (Muxed Account)
-  m,
-
-  /// C... address (Contract ID)
-  c,
-}
-
-/// Thrown when a string cannot be parsed as a valid Stellar address.
-class StellarAddressException implements Exception {
-  final String message;
-  const StellarAddressException(this.message);
-
-  @override
-  String toString() => 'StellarAddressException: $message';
-}
+import '../address/codes.dart';
+import '../muxed/decode.dart';
+import '../address/detect.dart';
+import '../exceptions.dart';
 
 /// An immutable representation of a Stellar Address.
 @immutable
@@ -49,39 +32,28 @@ class StellarAddress {
   ///
   /// Throws [StellarAddressException] for invalid input or length.
   factory StellarAddress.parse(String address) {
-    if (address.isEmpty) {
-      throw const StellarAddressException('Address cannot be empty.');
-    }
+    final kind = detect(address);
+    if (kind == null) throw const StellarAddressException('Invalid address');
 
-    // Basic length validation: G/C addresses are 56, M are 69.
-    if (address.length != 56 && address.length != 69) {
-      throw StellarAddressException('Invalid address length: ${address.length}');
-    }
-
-    final String prefix = address[0].toUpperCase();
-
-    switch (prefix) {
-      case 'G':
+    switch (kind) {
+      case AddressKind.g:
         return StellarAddress._(
-          kind: AddressKind.g,
-          raw: address,
-          baseG: address,
-        );
-      case 'M':
-        // Integration Note: decoding logic from src/muxed/decode.dart
-        // would be used here to populate baseG and muxedId.
-        return StellarAddress._(
-          kind: AddressKind.m,
-          raw: address,
-        );
-      case 'C':
-        return StellarAddress._(
-          kind: AddressKind.c,
-          raw: address,
-          baseG: address,
-        );
-      default:
-        throw StellarAddressException('Unsupported address prefix: $prefix');
+            kind: AddressKind.g, raw: address, baseG: address);
+      case AddressKind.m:
+        try {
+          final decoded = MuxedDecoder.decodeMuxedString(address);
+          return StellarAddress._(
+            kind: AddressKind.m,
+            raw: address,
+            baseG: decoded['baseG'] as String?,
+            muxedId: decoded['id'] as BigInt?,
+          );
+        } catch (error, stackTrace) {
+          throw StellarAddressException(
+              'Invalid muxed address: ${error.toString()}');
+        }
+      case AddressKind.c:
+        return StellarAddress._(kind: AddressKind.c, raw: address);
     }
   }
 

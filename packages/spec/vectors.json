@@ -3,38 +3,295 @@
   "cases": [
     {
       "module": "muxed_encode",
-      "description": "id above JS 2^53 safe integer — interop canary, catches any Number() coercion",
+      "description": "encode id=0: minimum uint64 boundary; ensures zero-padding and no off-by-one in id encoding",
       "input": {
-        "gAddress": "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1",
+        "base_g": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "id": "0"
+      },
+      "expected": {
+        "mAddress": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACAAAAAAAAAAAAD672"
+      },
+      "tags": ["positive", "edge"]
+    },
+    {
+      "module": "muxed_encode",
+      "description": "encode id=1: smallest positive id; exercises single-byte id encoding",
+      "input": {
+        "base_g": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "id": "1"
+      },
+      "expected": {
+        "mAddress": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACAAAAAAAAAAAAHOO2"
+      },
+      "tags": ["positive", "edge"]
+    },
+    {
+      "module": "muxed_encode",
+      "description": "encode id=2^53: JavaScript Number safe-integer boundary; last id representable exactly as JS number",
+      "input": {
+        "base_g": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "id": "9007199254740992"
+      },
+      "expected": {
+        "mAddress": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACABAAAAAAAAAAAFZG"
+      },
+      "tags": ["positive", "edge", "interop"]
+    },
+    {
+      "module": "muxed_encode",
+      "description": "encode id=2^53+1: above JS safe integer; requires string/BigInt to avoid silent corruption; interop canary",
+      "input": {
+        "base_g": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
         "id": "9007199254740993"
       },
       "expected": {
-        "mAddress": "MA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1AAJZRE6LRE6LRE6LRE6LRE6LRE6LRE6LRE6LRE6LRE6LRE6LR"
+        "mAddress": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACABAAAAAAAAAAEVIG"
       },
-      "tags": ["edge", "interop"]
+      "tags": ["positive", "edge", "interop"]
+    },
+    {
+      "module": "muxed_encode",
+      "description": "encode id=2^64-1: maximum uint64; proves full range support and no truncation",
+      "input": {
+        "base_g": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "id": "18446744073709551615"
+      },
+      "expected": {
+        "mAddress": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQAD7777777777774OFW"
+      },
+      "tags": ["positive", "edge", "interop"]
+    },
+    {
+      "module": "muxed_decode",
+      "description": "decode id=0 boundary case",
+      "input": {
+        "mAddress": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACAAAAAAAAAAAAD672"
+      },
+      "expected": {
+        "base_g": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "baseG": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "id": "0"
+      },
+      "tags": [
+        "positive",
+        "edge"
+      ]
+    },
+    {
+      "module": "muxed_decode",
+      "description": "decode id=1 small positive case",
+      "input": {
+        "mAddress": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACAAAAAAAAAAAAHOO2"
+      },
+      "expected": {
+        "base_g": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "baseG": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "id": "1"
+      },
+      "tags": [
+        "positive",
+        "edge"
+      ]
+    },
+    {
+      "module": "muxed_decode",
+      "description": "decode id=2^53 precision boundary",
+      "input": {
+        "mAddress": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACABAAAAAAAAAAAFZG"
+      },
+      "expected": {
+        "base_g": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "baseG": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "id": "9007199254740992"
+      },
+      "tags": [
+        "positive",
+        "edge",
+        "interop"
+      ]
+    },
+    {
+      "module": "muxed_decode",
+      "description": "decode id=2^53+1 interop canary",
+      "input": {
+        "mAddress": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACABAAAAAAAAAAEVIG"
+      },
+      "expected": {
+        "base_g": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "baseG": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "id": "9007199254740993"
+      },
+      "tags": [
+        "positive",
+        "edge",
+        "interop"
+      ]
+    },
+    {
+      "module": "muxed_decode",
+      "description": "decode id=2^64-1 max uint64",
+      "input": {
+        "mAddress": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQAD7777777777774OFW"
+      },
+      "expected": {
+        "base_g": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "baseG": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "id": "18446744073709551615"
+      },
+      "tags": [
+        "positive",
+        "edge",
+        "interop"
+      ]
+    },
+    {
+      "module": "muxed_decode",
+      "description": "invalid M-address should return decode error",
+      "input": {
+        "mAddress": "MZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+      },
+      "expected": {
+        "expected_error": "invalid encoded string"
+      },
+      "tags": [
+        "negative",
+        "edge"
+      ]
     },
     {
       "module": "detect",
       "description": "lowercase G accepted with normalization warning",
       "input": {
-        "address": "ga7qynf7szfx4x7x5jfzz3uq6bxhdsy2rkvkzkx5ffqj1zmzx1"
+        "address": "gaycuyt553c5lhve2xpw5gmejt4bxgm7ahmjwlapzp53kjo7eiqadrsi"
       },
       "expected": {
         "kind": "G",
-        "address": "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1",
+        "address": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
         "warnings": [
           {
             "code": "NON_CANONICAL_ADDRESS",
             "severity": "warn",
             "message": "lowercase address was normalized to uppercase",
             "normalization": {
-              "original": "ga7qynf7szfx4x7x5jfzz3uq6bxhdsy2rkvkzkx5ffqj1zmzx1",
-              "normalized": "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1"
+              "original": "gaycuyt553c5lhve2xpw5gmejt4bxgm7ahmjwlapzp53kjo7eiqadrsi",
+              "normalized": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI"
             }
           }
         ]
       },
-      "tags": ["negative", "edge"]
+      "tags": [
+        "negative",
+        "edge"
+      ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "M-address routing (no memo)",
+      "input": {
+        "destination": "MA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1AAJZRE6LRE6LRE6LRE6LRE6LRE6LRE6LRE6LRE6LRE6LRE6LR",
+        "memoType": "none"
+      },
+      "expected": {
+        "destinationBaseAccount": "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1",
+        "routingId": "9007199254740993",
+        "routingSource": "muxed",
+        "warnings": []
+      },
+      "tags": [
+        "positive",
+        "interop"
+      ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "C-address rejection",
+      "input": {
+        "destination": "CA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1",
+        "memoType": "none"
+      },
+      "expected": {
+        "destinationBaseAccount": null,
+        "routingId": null,
+        "routingSource": "none",
+        "warnings": [
+          {
+            "code": "INVALID_DESTINATION",
+            "severity": "error",
+            "message": "C address is not a valid destination",
+            "context": {
+              "destinationKind": "C"
+            }
+          }
+        ]
+      },
+      "tags": [
+        "negative"
+      ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "G-address + MEMO_ID routing",
+      "input": {
+        "destination": "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1",
+        "memoType": "id",
+        "memoValue": "100"
+      },
+      "expected": {
+        "destinationBaseAccount": "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1",
+        "routingId": "100",
+        "routingSource": "memo",
+        "warnings": []
+      },
+      "tags": [
+        "positive"
+      ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "G-address + MEMO_TEXT numeric routing",
+      "input": {
+        "destination": "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1",
+        "memoType": "text",
+        "memoValue": "200"
+      },
+      "expected": {
+        "destinationBaseAccount": "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1",
+        "routingId": "200",
+        "routingSource": "memo",
+        "warnings": []
+      },
+      "tags": [
+        "positive"
+      ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "Memo ID leading zeros normalization",
+      "input": {
+        "destination": "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1",
+        "memoType": "id",
+        "memoValue": "007"
+      },
+      "expected": {
+        "destinationBaseAccount": "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1",
+        "routingId": "7",
+        "routingSource": "memo",
+        "warnings": [
+          {
+            "code": "NON_CANONICAL_ROUTING_ID",
+            "severity": "warn",
+            "message": "Memo routing ID had leading zeros. Normalized to canonical decimal.",
+            "normalization": {
+              "original": "007",
+              "normalized": "7"
+            }
+          }
+        ]
+      },
+      "tags": [
+        "negative",
+        "edge"
+      ]
     }
   ]
 }

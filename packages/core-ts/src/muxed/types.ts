@@ -1,4 +1,4 @@
 export type MuxedResult = {
   baseG: string;
-  id: string;
+  id: bigint;
 };

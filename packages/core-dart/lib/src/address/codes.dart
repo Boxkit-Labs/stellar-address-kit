@@ -1,4 +1,4 @@
-enum AddressKind { g, m, c, invalid }
+enum AddressKind { g, m, c }
 
 abstract final class ErrorCode {
   static const invalidChecksum = 'INVALID_CHECKSUM';
@@ -55,13 +55,13 @@ class WarningContext {
 }
 
 class ParseResult {
-  final AddressKind kind;
+  final AddressKind? kind;
   final String address;
   final List<Warning> warnings;
   final AddressError? error;
 
   ParseResult({
-    required this.kind,
+    this.kind,
     required this.address,
     required this.warnings,
     this.error,

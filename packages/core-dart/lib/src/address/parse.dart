@@ -3,9 +3,9 @@ import 'codes.dart';
 
 ParseResult parse(String input) {
   final kind = detect(input);
-  if (kind == AddressKind.invalid) {
+  if (kind == null) {
     return ParseResult(
-      kind: kind,
+      kind: null,
       address: input,
       warnings: [],
       error: AddressError(
