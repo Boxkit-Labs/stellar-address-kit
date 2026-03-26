@@ -1,8 +1,9 @@
 import 'dart:typed_data';
 import '../util/strkey.dart';
+import 'decoded_muxed_address.dart';
 
 class MuxedDecoder {
-  static Map<String, dynamic> decodeMuxedString(String mAddress) {
+  static DecodedMuxedAddress decodeMuxedString(String mAddress) {
     final decoded = StrKeyUtil.decodeBase32(mAddress);
     // Payload starts at index 1 (skip version byte 0x60)
     // 32 bytes pubkey + 8 bytes ID = 40 bytes
@@ -25,6 +26,6 @@ class MuxedDecoder {
     finalGData[34] = (checksum >> 8) & 0xFF;
     final baseG = StrKeyUtil.encodeBase32(finalGData);
 
-    return {'baseG': baseG, 'id': id};
+    return DecodedMuxedAddress(baseG: baseG, id: id);
   }
 }
