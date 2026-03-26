@@ -7,62 +7,53 @@ import (
 	"github.com/stellar-address-kit/core-go/address"
 )
 
-func TestExtractRouting_SpecVectors(t *testing.T) {
+const (
+	testBaseG = "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI"
+	testMuxed = "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACABAAAAAAAAAAEVIG"
+)
+
+func TestExtractRouting_RoutingMatrix(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    RoutingInput
 		expected RoutingResult
 	}{
 		{
-			name: "M-address routing (no memo)",
+			name: "g_address_without_memo_routes_none",
 			input: RoutingInput{
-				Destination: "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACABAAAAAAAAAAEVIG",
+				Destination: testBaseG,
 				MemoType:    "none",
 			},
 			expected: RoutingResult{
-				DestinationBaseAccount: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
-				RoutingID:              "9007199254740993",
-				RoutingSource:          "muxed",
+				DestinationBaseAccount: testBaseG,
+				RoutingID:              "",
+				RoutingSource:          "none",
 				Warnings:               []address.Warning{},
 			},
 		},
 		{
-			name: "G-address + MEMO_ID routing",
+			name: "g_address_with_memo_id_routes_memo",
 			input: RoutingInput{
-				Destination: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+				Destination: testBaseG,
 				MemoType:    "id",
 				MemoValue:   "100",
 			},
 			expected: RoutingResult{
-				DestinationBaseAccount: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+				DestinationBaseAccount: testBaseG,
 				RoutingID:              "100",
 				RoutingSource:          "memo",
 				Warnings:               []address.Warning{},
 			},
 		},
 		{
-			name: "G-address + MEMO_TEXT numeric routing",
+			name: "g_address_with_numeric_memo_text_routes_memo",
 			input: RoutingInput{
-				Destination: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+				Destination: testBaseG,
 				MemoType:    "text",
-				MemoValue:   "200",
-			},
-			expected: RoutingResult{
-				DestinationBaseAccount: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
-				RoutingID:              "200",
-				RoutingSource:          "memo",
-				Warnings:               []address.Warning{},
-			},
-		},
-		{
-			name: "Memo ID leading zeros normalization",
-			input: RoutingInput{
-				Destination: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
-				MemoType:    "id",
 				MemoValue:   "007",
 			},
 			expected: RoutingResult{
-				DestinationBaseAccount: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+				DestinationBaseAccount: testBaseG,
 				RoutingID:              "7",
 				RoutingSource:          "memo",
 				Warnings: []address.Warning{
@@ -79,37 +70,14 @@ func TestExtractRouting_SpecVectors(t *testing.T) {
 			},
 		},
 		{
-			name: "G-address + MEMO_HASH routes to none",
+			name: "g_address_with_supported_but_unroutable_memo_warns_unsupported",
 			input: RoutingInput{
-				Destination: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
-				MemoType:    "hash",
+				Destination: testBaseG,
+				MemoType:    "MEMO_RETURN",
 				MemoValue:   "not-a-routing-id",
 			},
 			expected: RoutingResult{
-				DestinationBaseAccount: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
-				RoutingID:              "",
-				RoutingSource:          "none",
-				Warnings: []address.Warning{
-					{
-						Code:     address.WarnUnsupportedMemoType,
-						Severity: "warn",
-						Message:  "Memo type hash is not supported for routing.",
-						Context: &address.WarningContext{
-							MemoType: "hash",
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "G-address + MEMO_RETURN alias routes to none",
-			input: RoutingInput{
-				Destination: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
-				MemoType:    "MEMO_RETURN",
-				MemoValue:   "also-not-a-routing-id",
-			},
-			expected: RoutingResult{
-				DestinationBaseAccount: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+				DestinationBaseAccount: testBaseG,
 				RoutingID:              "",
 				RoutingSource:          "none",
 				Warnings: []address.Warning{
@@ -124,24 +92,87 @@ func TestExtractRouting_SpecVectors(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "g_address_with_unknown_memo_type_warns_unknown",
+			input: RoutingInput{
+				Destination: testBaseG,
+				MemoType:    "memo_blob",
+				MemoValue:   "opaque",
+			},
+			expected: RoutingResult{
+				DestinationBaseAccount: testBaseG,
+				RoutingID:              "",
+				RoutingSource:          "none",
+				Warnings: []address.Warning{
+					{
+						Code:     address.WarnUnsupportedMemoType,
+						Severity: "warn",
+						Message:  "Unrecognized memo type: memo_blob",
+						Context: &address.WarningContext{
+							MemoType: "unknown",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "m_address_without_incoming_memo_routes_muxed",
+			input: RoutingInput{
+				Destination: testMuxed,
+				MemoType:    "none",
+			},
+			expected: RoutingResult{
+				DestinationBaseAccount: testBaseG,
+				RoutingID:              "9007199254740993",
+				RoutingSource:          "muxed",
+				Warnings:               []address.Warning{},
+			},
+		},
+		{
+			name: "m_address_with_routing_memo_warns_memo_present_with_muxed",
+			input: RoutingInput{
+				Destination: testMuxed,
+				MemoType:    "id",
+				MemoValue:   "42",
+			},
+			expected: RoutingResult{
+				DestinationBaseAccount: testBaseG,
+				RoutingID:              "9007199254740993",
+				RoutingSource:          "muxed",
+				Warnings: []address.Warning{
+					{
+						Code:     address.WarnMemoPresentWithMuxed,
+						Severity: "warn",
+						Message:  "Routing ID found in both M-address and Memo. M-address ID takes precedence.",
+					},
+				},
+			},
+		},
+		{
+			name: "m_address_with_non_routing_memo_warns_memo_ignored",
+			input: RoutingInput{
+				Destination: testMuxed,
+				MemoType:    "text",
+				MemoValue:   "not-a-routing-id",
+			},
+			expected: RoutingResult{
+				DestinationBaseAccount: testBaseG,
+				RoutingID:              "9007199254740993",
+				RoutingSource:          "muxed",
+				Warnings: []address.Warning{
+					{
+						Code:     address.WarnMemoIgnoredForMuxed,
+						Severity: "info",
+						Message:  "Memo present with M-address. Any potential routing ID in memo is ignored.",
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ExtractRouting(tt.input)
-
-			if result.DestinationBaseAccount != tt.expected.DestinationBaseAccount {
-				t.Errorf("DestinationBaseAccount = %v, want %v", result.DestinationBaseAccount, tt.expected.DestinationBaseAccount)
-			}
-			if result.RoutingID != tt.expected.RoutingID {
-				t.Errorf("RoutingID = %v, want %v", result.RoutingID, tt.expected.RoutingID)
-			}
-			if result.RoutingSource != tt.expected.RoutingSource {
-				t.Errorf("RoutingSource = %v, want %v", result.RoutingSource, tt.expected.RoutingSource)
-			}
-			if !reflect.DeepEqual(result.Warnings, tt.expected.Warnings) {
-				t.Errorf("Warnings = %#v, want %#v", result.Warnings, tt.expected.Warnings)
-			}
+			assertRoutingResult(t, ExtractRouting(tt.input), tt.expected)
 		})
 	}
 }
@@ -153,33 +184,42 @@ func TestExtractRouting_ContractSourceClearsRoutingState(t *testing.T) {
 	}
 
 	result := ExtractRouting(RoutingInput{
-		Destination:   "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+		Destination:   testBaseG,
 		MemoType:      "id",
 		MemoValue:     "100",
 		SourceAccount: contractAddress,
 	})
 
-	if result.DestinationBaseAccount != "" {
-		t.Errorf("DestinationBaseAccount = %v, want empty", result.DestinationBaseAccount)
-	}
-	if result.RoutingID != "" {
-		t.Errorf("RoutingID = %v, want empty", result.RoutingID)
-	}
-	if result.RoutingSource != "none" {
-		t.Errorf("RoutingSource = %v, want none", result.RoutingSource)
-	}
-	if result.DestinationError != nil {
-		t.Errorf("DestinationError = %v, want nil", result.DestinationError)
-	}
-	if len(result.Warnings) != 1 {
-		t.Fatalf("Warnings count = %v, want 1", len(result.Warnings))
+	expected := RoutingResult{
+		RoutingSource: "none",
+		Warnings: []address.Warning{
+			{
+				Code:     address.WarnContractSenderDetected,
+				Severity: "info",
+				Message:  "Contract source detected. Routing state cleared.",
+			},
+		},
 	}
 
-	warning := result.Warnings[0]
-	if warning.Code != address.WarnContractSenderDetected {
-		t.Errorf("Warning code = %v, want %v", warning.Code, address.WarnContractSenderDetected)
+	assertRoutingResult(t, result, expected)
+}
+
+func assertRoutingResult(t *testing.T, got, want RoutingResult) {
+	t.Helper()
+
+	if got.DestinationBaseAccount != want.DestinationBaseAccount {
+		t.Errorf("DestinationBaseAccount = %v, want %v", got.DestinationBaseAccount, want.DestinationBaseAccount)
 	}
-	if warning.Severity != "info" {
-		t.Errorf("Warning severity = %v, want info", warning.Severity)
+	if got.RoutingID != want.RoutingID {
+		t.Errorf("RoutingID = %v, want %v", got.RoutingID, want.RoutingID)
+	}
+	if got.RoutingSource != want.RoutingSource {
+		t.Errorf("RoutingSource = %v, want %v", got.RoutingSource, want.RoutingSource)
+	}
+	if !reflect.DeepEqual(got.Warnings, want.Warnings) {
+		t.Errorf("Warnings = %#v, want %#v", got.Warnings, want.Warnings)
+	}
+	if !reflect.DeepEqual(got.DestinationError, want.DestinationError) {
+		t.Errorf("DestinationError = %#v, want %#v", got.DestinationError, want.DestinationError)
 	}
 }
