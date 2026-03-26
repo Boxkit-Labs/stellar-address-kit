@@ -5,6 +5,15 @@ import '../util/strkey.dart';
 import 'encode.dart';
 
 /// Class for handling Stellar Muxed Addresses (M... addresses).
+///
+/// IMPORTANT: On web targets, Dart compiled to JavaScript uses JS `Number` for
+/// integer values, which cannot safely represent all 64-bit values above
+/// `2^53 - 1`. In this library, `MuxedAddress` uses Dart `BigInt` for the
+/// muxed ID; web consumers should avoid converting the 64-bit `id` to a JS
+/// `Number`, or explicitly keep it as `BigInt` to prevent precision loss.
+///
+/// If you need to serialize IDs for web usage, treat them as strings and
+/// apply appropriate conversion logic to maintain full 64-bit range correctness.
 class MuxedAddress {
   static String encode({required String baseG, required BigInt id}) {
     final uint64Max = BigInt.parse('18446744073709551615');

@@ -8,7 +8,7 @@ export function encodeMuxed(baseG: string, id: bigint): string {
   }
 
   if (id < 0n || id > MAX_UINT64) {
-    throw new Error(`ID is outside the uint64 range: ${id.toString()}`);
+    throw new RangeError(`ID is outside the uint64 range: ${id.toString()}`);
   }
 
   if (StrKey.isValidEd25519PublicKey(baseG) === false) {

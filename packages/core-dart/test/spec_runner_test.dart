@@ -58,6 +58,64 @@ void main() {
             break;
 
           case 'extract_routing':
+            final routingInput = RoutingInput(
+              destination: input['destination'].toString(),
+              memoType: input['memoType']?.toString() ?? 'none',
+              memoValue: input['memoValue']?.toString(),
+            );
+
+            final result = extractRouting(routingInput);
+
+            // Validate routingSource
+            final expectedSource = expected['routingSource']?.toString();
+            if (expectedSource != null) {
+              expect(
+                result.routingSource.name,
+                expectedSource,
+                reason: 'routingSource mismatch',
+              );
+            }
+
+            // Validate routingId
+            final expectedId = expected['routingId'];
+            if (expectedId == null) {
+              expect(result.routingId, isNull, reason: 'routingId should be null');
+            } else {
+              expect(
+                result.routingId,
+                expectedId.toString(),
+                reason: 'routingId mismatch',
+              );
+            }
+
+            // Validate destinationBaseAccount
+            final expectedBase = expected['destinationBaseAccount'];
+            if (expectedBase == null) {
+              expect(result.destinationBaseAccount, isNull,
+                  reason: 'destinationBaseAccount should be null');
+            } else {
+              expect(
+                result.destinationBaseAccount,
+                expectedBase.toString(),
+                reason: 'destinationBaseAccount mismatch',
+              );
+            }
+
+            // Validate warnings (codes only)
+            final expectedWarnings =
+                (expected['warnings'] as List<dynamic>? ?? []);
+            expect(
+              result.warnings.length,
+              expectedWarnings.length,
+              reason: 'warnings count mismatch',
+            );
+            for (var i = 0; i < expectedWarnings.length; i++) {
+              final w = expectedWarnings[i] as Map<String, dynamic>;
+              expect(result.warnings[i].code, w['code'],
+                  reason: 'warning[$i].code mismatch');
+              expect(result.warnings[i].severity, w['severity'],
+                  reason: 'warning[$i].severity mismatch');
+            }
             break;
         }
       });

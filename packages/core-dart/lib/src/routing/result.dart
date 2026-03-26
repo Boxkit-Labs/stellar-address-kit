@@ -1,5 +1,23 @@
 import '../address/codes.dart';
 
+enum RoutingSource {
+  muxed,
+  memo,
+  none;
+
+  String toDisplayString() {
+    switch (this) {
+      case RoutingSource.muxed:
+        return 'Routed via muxed address (M-address)';
+      case RoutingSource.memo:
+        return 'Routed via memo ID';
+      case RoutingSource.none:
+        return 'No routing source detected';
+    }
+  }
+}
+
+
 class RoutingInput {
   final String destination;
   final String memoType;
@@ -17,7 +35,7 @@ class RoutingInput {
 class RoutingResult {
   final String? destinationBaseAccount;
   final String? routingId; // decimal uint64 string — spec level
-  final String routingSource; // 'muxed' | 'memo' | 'none'
+  final RoutingSource routingSource;
   final List<Warning> warnings;
   final DestinationError? destinationError;
 
@@ -59,3 +77,4 @@ class RoutingWarning {
   @override
   int get hashCode => code.hashCode;
 }
+

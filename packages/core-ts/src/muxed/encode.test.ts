@@ -61,4 +61,24 @@ describe("encodeMuxed", () => {
       );
     }).toThrow("ID must be a bigint");
   });
+
+  // 5. Boundary Values: Valid edge cases
+  it("accepts id=0n (minimum valid uint64)", () => {
+    expect(() => {
+      encodeMuxed(
+        "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        0n,
+      );
+    }).not.toThrow();
+  });
+
+  it("accepts id=MAX_UINT64 (maximum valid uint64)", () => {
+    const MAX_UINT64 = 18446744073709551615n;
+    expect(() => {
+      encodeMuxed(
+        "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        MAX_UINT64,
+      );
+    }).not.toThrow();
+  });
 });

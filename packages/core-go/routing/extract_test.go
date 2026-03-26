@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stellar-address-kit/core-go/address"
@@ -77,6 +78,52 @@ func TestExtractRouting_SpecVectors(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "G-address + MEMO_HASH routes to none",
+			input: RoutingInput{
+				Destination: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+				MemoType:    "hash",
+				MemoValue:   "not-a-routing-id",
+			},
+			expected: RoutingResult{
+				DestinationBaseAccount: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+				RoutingID:              "",
+				RoutingSource:          "none",
+				Warnings: []address.Warning{
+					{
+						Code:     address.WarnUnsupportedMemoType,
+						Severity: "warn",
+						Message:  "Memo type hash is not supported for routing.",
+						Context: &address.WarningContext{
+							MemoType: "hash",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "G-address + MEMO_RETURN alias routes to none",
+			input: RoutingInput{
+				Destination: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+				MemoType:    "MEMO_RETURN",
+				MemoValue:   "also-not-a-routing-id",
+			},
+			expected: RoutingResult{
+				DestinationBaseAccount: "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+				RoutingID:              "",
+				RoutingSource:          "none",
+				Warnings: []address.Warning{
+					{
+						Code:     address.WarnUnsupportedMemoType,
+						Severity: "warn",
+						Message:  "Memo type return is not supported for routing.",
+						Context: &address.WarningContext{
+							MemoType: "return",
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -92,8 +139,8 @@ func TestExtractRouting_SpecVectors(t *testing.T) {
 			if result.RoutingSource != tt.expected.RoutingSource {
 				t.Errorf("RoutingSource = %v, want %v", result.RoutingSource, tt.expected.RoutingSource)
 			}
-			if len(result.Warnings) != len(tt.expected.Warnings) {
-				t.Errorf("Warnings count = %v, want %v", len(result.Warnings), len(tt.expected.Warnings))
+			if !reflect.DeepEqual(result.Warnings, tt.expected.Warnings) {
+				t.Errorf("Warnings = %#v, want %#v", result.Warnings, tt.expected.Warnings)
 			}
 		})
 	}

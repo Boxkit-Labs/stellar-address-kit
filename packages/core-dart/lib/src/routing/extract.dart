@@ -10,14 +10,83 @@ import 'memo.dart';
 ) {
   String? routingId;
   String routingSource = 'none';
+RoutingResult extractRouting(RoutingInput input) {
+  final parsed = parse(input.destination);
+
+  if (parsed.kind == null) {
+    return RoutingResult(
+      routingSource: RoutingSource.none,
+      warnings: [],
+      destinationError: DestinationError(
+        code: parsed.error!.code,
+        message: parsed.error!.message,
+      ),
+    );
+  }
+
+  if (parsed.kind == AddressKind.c) {
+    return RoutingResult(
+      routingSource: RoutingSource.none,
+      warnings: [
+        Warning(
+          code: WarningCode.invalidDestination,
+          severity: 'error',
+          message: 'C address is not a valid destination',
+          context: WarningContext(destinationKind: 'C'),
+        ),
+      ],
+    );
+  }
+
+  if (parsed.kind == AddressKind.m) {
+    final warnings = List<Warning>.from(parsed.warnings);
+
+    if (input.memoType == 'id' ||
+        (input.memoType == 'text' &&
+            input.memoValue != null &&
+            RegExp(r'^\d+$').hasMatch(input.memoValue!))) {
+      warnings.add(
+        Warning(
+          code: WarningCode.memoPresentWithMuxed,
+          severity: 'warn',
+          message:
+              'Routing ID found in both M-address and Memo. M-address ID takes precedence.',
+        ),
+      );
+    } else if (input.memoType != 'none') {
+      warnings.add(
+        Warning(
+          code: WarningCode.memoIgnoredForMuxed,
+          severity: 'info',
+          message:
+              'Memo present with M-address. Any potential routing ID in memo is ignored.',
+        ),
+      );
+    }
+
+    // Placeholder for actual M-address decoding logic
+    // We'll implement the full decoding in the next step to pass vectors.
+    return RoutingResult(
+      destinationBaseAccount: 'PLACEHOLDER_G_ADDRESS', // To be implemented
+      routingId: 'PLACEHOLDER_ID', // To be implemented
+      routingSource: RoutingSource.muxed,
+      warnings: warnings,
+    );
+  }
+
+  // G-address branch
+  String? routingId;
+  RoutingSource routingSource = RoutingSource.none;
+  final warnings = List<Warning>.from(parsed.warnings);
 
   if (input.memoType == 'id') {
-    final norm = normalizeMemoTextId(input.memoValue ?? '');
-    routingId = norm.normalized;
-    routingSource = norm.normalized != null ? 'memo' : 'none';
-    warnings.addAll(norm.warnings);
-
-    if (norm.normalized == null) {
+    // Strict MEMO_ID branch: parse as BigInt, reject invalid padding
+    final raw = input.memoValue ?? '';
+    final norm = normalizeMemoId(raw);
+    if (norm.normalized != null) {
+      routingId = norm.normalized;
+      routingSource = RoutingSource.memo;
+    } else {
       warnings.add(
         Warning(
           code: WarningCode.memoIdInvalidFormat,
@@ -26,11 +95,12 @@ import 'memo.dart';
         ),
       );
     }
+    warnings.addAll(norm.warnings);
   } else if (input.memoType == 'text' && input.memoValue != null) {
     final norm = normalizeMemoTextId(input.memoValue!);
     if (norm.normalized != null) {
       routingId = norm.normalized;
-      routingSource = 'memo';
+      routingSource = RoutingSource.memo;
       warnings.addAll(norm.warnings);
     } else {
       warnings.add(

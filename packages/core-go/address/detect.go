@@ -17,4 +17,3 @@ func Detect(addr string) (AddressKind, error) {
 		return "", ErrUnknownVersionByteError
 	}
 }
-
