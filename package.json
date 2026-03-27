@@ -1,18 +1,26 @@
 {
-  "name": "stellar-address-kit-monorepo",
-  "private": true,
-  "description": "Multi-language Stellar address processing and deposit routing kit",
+  "name": "@stellar-address-kit/core-ts",
+  "version": "0.1.0",
+  "description": "Stellar Address Kit – TypeScript routing extraction (M-address / SEP-0023)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "spec:validate": "node spec/validate.js",
-    "spec:sync-check": "node scripts/check-vectors-sync.js",
-    "test": "pnpm spec:validate && pnpm -r test",
-    "test:ts": "pnpm --filter stellar-address-kit test",
-    "test:go": "cd packages/core-go && go test ./...",
-    "test:dart": "cd packages/core-dart && dart test",
-    "fuzz:go": "cd packages/core-go && go test -fuzz=. -fuzztime=300s ./spec/...",
-    "release": "node scripts/release.js"
+    "build": "tsc",
+    "test": "jest --runInBand --forceExit"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^13.0.0"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.1"
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.2",
+    "typescript": "^5.4.5"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": ["**/tests/**/*.test.ts"]
   }
 }

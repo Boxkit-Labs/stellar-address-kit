@@ -49,6 +49,20 @@ class RoutingResult {
 
   BigInt? get routingIdAsBigInt =>
       routingId != null ? BigInt.parse(routingId!) : null;
+
+  String toDisplayString() {
+    switch (routingSource) {
+      case RoutingSource.muxed:
+        final id = routingId ?? 'unknown';
+        final base = destinationBaseAccount ?? 'unknown';
+        return 'Muxed routing: ID $id -> $base';
+      case RoutingSource.memo:
+        final id = routingId ?? 'unknown';
+        return 'Memo routing: ID $id';
+      case RoutingSource.none:
+        return 'No routing detected';
+    }
+  }
 }
 
 class DestinationError {

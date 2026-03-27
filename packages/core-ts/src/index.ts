@@ -1,3 +1,4 @@
+export * from "./errors";
 export * from "./address/detect";
 export * from "./address/validate";
 export * from "./address/parse";

@@ -10,7 +10,7 @@ export type ErrorCode =
 
 export class AddressParseError extends Error {
   code: ErrorCode;
-  input: string;
+  readonly input: string;
 
   constructor(code: ErrorCode, input: string, message: string) {
     super(message);

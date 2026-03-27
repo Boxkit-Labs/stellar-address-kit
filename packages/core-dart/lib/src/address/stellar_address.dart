@@ -32,28 +32,57 @@ class StellarAddress {
   ///
   /// Throws [StellarAddressException] for invalid input or length.
   factory StellarAddress.parse(String address) {
-    final kind = detect(address);
-    if (kind == null) throw const StellarAddressException('Invalid address');
+    if (address.isEmpty) {
+      throw const StellarAddressException('Invalid address');
+    }
 
-    switch (kind) {
-      case AddressKind.g:
-        return StellarAddress._(
-            kind: AddressKind.g, raw: address, baseG: address);
-      case AddressKind.m:
-        try {
-          final decoded = MuxedDecoder.decodeMuxedString(address);
-          return StellarAddress._(
-            kind: AddressKind.m,
-            raw: address,
-            baseG: decoded['baseG'] as String?,
-            muxedId: decoded['id'] as BigInt?,
-          );
-        } catch (error, stackTrace) {
-          throw StellarAddressException(
-              'Invalid muxed address: ${error.toString()}');
-        }
-      case AddressKind.c:
-        return StellarAddress._(kind: AddressKind.c, raw: address);
+    switch (address[0].toUpperCase()) {
+      case 'G':
+        return _parseStandard(address);
+      case 'M':
+        return _parseMuxed(address);
+      case 'C':
+        return _parseContract(address);
+      default:
+        throw const StellarAddressException('Invalid address');
+    }
+  }
+
+  static StellarAddress _parseStandard(String address) {
+    _expectKind(address, AddressKind.g);
+    return StellarAddress._(
+      kind: AddressKind.g,
+      raw: address,
+      baseG: address,
+    );
+  }
+
+  static StellarAddress _parseMuxed(String address) {
+    _expectKind(address, AddressKind.m);
+
+    try {
+      final decoded = MuxedDecoder.decodeMuxedString(address);
+      return StellarAddress._(
+        kind: AddressKind.m,
+        raw: address,
+        baseG: decoded['baseG'] as String?,
+        muxedId: decoded['id'] as BigInt?,
+      );
+    } catch (error) {
+      throw StellarAddressException(
+        'Invalid muxed address: ${error.toString()}',
+      );
+    }
+  }
+
+  static StellarAddress _parseContract(String address) {
+    _expectKind(address, AddressKind.c);
+    return StellarAddress._(kind: AddressKind.c, raw: address);
+  }
+
+  static void _expectKind(String address, AddressKind expectedKind) {
+    if (detect(address) != expectedKind) {
+      throw const StellarAddressException('Invalid address');
     }
   }
 

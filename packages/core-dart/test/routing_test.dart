@@ -24,4 +24,53 @@ void main() {
       );
     });
   });
+
+  group('RoutingResult.toDisplayString', () {
+    test('muxed source formats with routing ID and base account', () {
+      final result = RoutingResult(
+        routingSource: RoutingSource.muxed,
+        routingId: '12345',
+        destinationBaseAccount: 'GABC123',
+        warnings: [],
+      );
+      expect(
+        result.toDisplayString(),
+        equals('Muxed routing: ID 12345 -> GABC123'),
+      );
+    });
+
+    test('muxed source handles null values gracefully', () {
+      final result = RoutingResult(
+        routingSource: RoutingSource.muxed,
+        warnings: [],
+      );
+      expect(
+        result.toDisplayString(),
+        equals('Muxed routing: ID unknown -> unknown'),
+      );
+    });
+
+    test('memo source formats with routing ID', () {
+      final result = RoutingResult(
+        routingSource: RoutingSource.memo,
+        routingId: '99999',
+        warnings: [],
+      );
+      expect(
+        result.toDisplayString(),
+        equals('Memo routing: ID 99999'),
+      );
+    });
+
+    test('none source formats as no routing', () {
+      final result = RoutingResult(
+        routingSource: RoutingSource.none,
+        warnings: [],
+      );
+      expect(
+        result.toDisplayString(),
+        equals('No routing detected'),
+      );
+    });
+  });
 }

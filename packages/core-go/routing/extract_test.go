@@ -46,17 +46,91 @@ func TestExtractRouting_RoutingMatrix(t *testing.T) {
 			},
 		},
 		{
-			name: "memo-text",
+			name: "memo-id-zero",
 			input: RoutingInput{
 				Destination: testBaseG,
-				MemoType:    "text",
-				MemoValue:   "200",
+				MemoType:    "id",
+				MemoValue:   "0",
 			},
 			expected: RoutingResult{
 				DestinationBaseAccount: testBaseG,
-				RoutingID:              "200",
+				RoutingID:              ptrUint64(0),
 				RoutingSource:          "memo",
 				Warnings:               []address.Warning{},
+			},
+		},
+		{
+			name: "memo-id-max-uint64",
+			input: RoutingInput{
+				Destination: testBaseG,
+				MemoType:    "id",
+				MemoValue:   "18446744073709551615",
+			},
+			expected: RoutingResult{
+				DestinationBaseAccount: testBaseG,
+				RoutingID:              ptrUint64(18446744073709551615),
+				RoutingSource:          "memo",
+				Warnings:               []address.Warning{},
+			},
+		},
+		{
+			name: "memo-id-empty",
+			input: RoutingInput{
+				Destination: testBaseG,
+				MemoType:    "id",
+				MemoValue:   "",
+			},
+			expected: RoutingResult{
+				DestinationBaseAccount: testBaseG,
+				RoutingID:              nil,
+				RoutingSource:          "none",
+				Warnings: []address.Warning{
+					{
+						Code:     address.WarnMemoIDInvalidFormat,
+						Severity: "warn",
+						Message:  "MEMO_ID was empty, non-numeric, or exceeded uint64 max.",
+					},
+				},
+			},
+		},
+		{
+			name: "memo-id-non-numeric",
+			input: RoutingInput{
+				Destination: testBaseG,
+				MemoType:    "id",
+				MemoValue:   "abc",
+			},
+			expected: RoutingResult{
+				DestinationBaseAccount: testBaseG,
+				RoutingID:              nil,
+				RoutingSource:          "none",
+				Warnings: []address.Warning{
+					{
+						Code:     address.WarnMemoIDInvalidFormat,
+						Severity: "warn",
+						Message:  "MEMO_ID was empty, non-numeric, or exceeded uint64 max.",
+					},
+				},
+			},
+		},
+		{
+			name: "memo-id-overflow",
+			input: RoutingInput{
+				Destination: testBaseG,
+				MemoType:    "id",
+				MemoValue:   "18446744073709551616",
+			},
+			expected: RoutingResult{
+				DestinationBaseAccount: testBaseG,
+				RoutingID:              nil,
+				RoutingSource:          "none",
+				Warnings: []address.Warning{
+					{
+						Code:     address.WarnMemoIDInvalidFormat,
+						Severity: "warn",
+						Message:  "MEMO_ID was empty, non-numeric, or exceeded uint64 max.",
+					},
+				},
 			},
 		},
 		{
@@ -84,6 +158,20 @@ func TestExtractRouting_RoutingMatrix(t *testing.T) {
 			},
 		},
 		{
+			name: "memo-text",
+			input: RoutingInput{
+				Destination: testBaseG,
+				MemoType:    "text",
+				MemoValue:   "200",
+			},
+			expected: RoutingResult{
+				DestinationBaseAccount: testBaseG,
+				RoutingID:              ptrUint64(200),
+				RoutingSource:          "memo",
+				Warnings:               []address.Warning{},
+			},
+		},
+		{
 			name: "memo-hash",
 			input: RoutingInput{
 				Destination: testBaseG,
@@ -92,7 +180,7 @@ func TestExtractRouting_RoutingMatrix(t *testing.T) {
 			},
 			expected: RoutingResult{
 				DestinationBaseAccount: testBaseG,
-				RoutingID:              "",
+				RoutingID:              nil,
 				RoutingSource:          "none",
 				Warnings: []address.Warning{
 					{

@@ -78,7 +78,7 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 	}
 
 	if parsed.Kind == address.KindM {
-		baseG, id, err := muxed.DecodeMuxed(parsed.Raw)
+		baseG, idStr, err := muxed.DecodeMuxed(parsed.Raw)
 		if err != nil {
 			return RoutingResult{
 				RoutingSource: "none",
@@ -107,9 +107,10 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 			})
 		}
 
+		idVal, _ := strconv.ParseUint(idStr, 10, 64)
 		return RoutingResult{
 			DestinationBaseAccount: baseG,
-			RoutingID:              &id,
+			RoutingID:              &idVal,
 			RoutingSource:          "muxed",
 			Warnings:               warnings,
 		}
@@ -120,20 +121,28 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 	warnings := []address.Warning{}
 
 	if input.MemoType == "id" {
-		norm := NormalizeMemoTextID(input.MemoValue)
-		if norm.Normalized != "" {
-			parsedID, _ := strconv.ParseUint(norm.Normalized, 10, 64)
-			routingID = &parsedID
-			routingSource = "memo"
-		}
-		warnings = append(warnings, norm.Warnings...)
-
-		if norm.Normalized == "" {
+		val, parseErr := strconv.ParseUint(input.MemoValue, 10, 64)
+		if parseErr != nil {
 			warnings = append(warnings, address.Warning{
 				Code:     address.WarnMemoIDInvalidFormat,
 				Severity: "warn",
 				Message:  "MEMO_ID was empty, non-numeric, or exceeded uint64 max.",
 			})
+		} else {
+			normalized := strconv.FormatUint(val, 10)
+			if normalized != input.MemoValue {
+				warnings = append(warnings, address.Warning{
+					Code:     address.WarnNonCanonicalRoutingID,
+					Severity: "warn",
+					Message:  "Memo routing ID had leading zeros. Normalized to canonical decimal.",
+					Normalization: &address.Normalization{
+						Original:   input.MemoValue,
+						Normalized: normalized,
+					},
+				})
+			}
+			routingID = &val
+			routingSource = "memo"
 		}
 	} else if input.MemoType == "text" && input.MemoValue != "" {
 		norm := NormalizeMemoTextID(input.MemoValue)
