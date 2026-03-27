@@ -125,3 +125,49 @@ func TestEncodeMuxedJSONUnmarshalWithJS53Boundary(t *testing.T) {
 		t.Fatalf("decoded id mismatch: got %q want %q", decodedID, boundaryIDStr)
 	}
 }
+
+// TestEncodeMuxedUint64MaxRoundtrip validates round-trip encoding/decoding at the uint64 maximum boundary.
+// This test ensures that maxUint64 (18446744073709551615) preserves bit-for-bit correctness without
+// buffer overflow or precision loss during serialization and deserialization.
+func TestEncodeMuxedUint64MaxRoundtrip(t *testing.T) {
+	kp, err := keypair.Random()
+	if err != nil {
+		t.Fatalf("keypair.Random returned error: %v", err)
+	}
+
+	baseG := kp.Address()
+	maxUint64 := ^uint64(0)
+	idStr := strconv.FormatUint(maxUint64, 10)
+
+	// Round-trip: encode the max uint64 value
+	encoded, err := EncodeMuxed(baseG, idStr)
+	if err != nil {
+		t.Fatalf("EncodeMuxed with maxUint64 returned error: %v", err)
+	}
+
+	// Round-trip: decode and verify bit-for-bit correctness
+	decodedBaseG, decodedID, err := DecodeMuxed(encoded)
+	if err != nil {
+		t.Fatalf("DecodeMuxed returned error: %v", err)
+	}
+
+	// Verify base account matches exactly
+	if decodedBaseG != baseG {
+		t.Fatalf("decoded base account mismatch: got %q want %q", decodedBaseG, baseG)
+	}
+
+	// Verify ID matches exactly (bit-for-bit)
+	if decodedID != idStr {
+		t.Fatalf("decoded id mismatch: got %q want %q", decodedID, idStr)
+	}
+
+	// Additional validation: ensure the decoded ID can be converted back to uint64 without loss
+	decodedUint64, err := strconv.ParseUint(decodedID, 10, 64)
+	if err != nil {
+		t.Fatalf("ParseUint returned error: %v", err)
+	}
+
+	if decodedUint64 != maxUint64 {
+		t.Fatalf("uint64 round-trip precision loss: got %d want %d", decodedUint64, maxUint64)
+	}
+}
