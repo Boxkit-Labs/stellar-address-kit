@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parse } from "./parse";
+import { AddressParseError } from "./errors";
 
 describe("parse", () => {
   describe("G addresses", () => {
@@ -157,83 +158,76 @@ describe("parse", () => {
   });
 
   describe("error cases", () => {
-    it("should return invalid for address with unknown prefix", () => {
+    it("should throw AddressParseError for address with unknown prefix", () => {
       const invalidAddress = "INVALID_ADDRESS";
-      const result = parse(invalidAddress);
+      expect(() => parse(invalidAddress)).toThrowError(
+        /AddressParseError/
+      );
 
-      if (result.kind === "invalid") {
-        expect(result.error.code).toBe("UNKNOWN_PREFIX");
-        expect(result.error.input).toBe(invalidAddress);
-        expect(result.error.message).toBe("Invalid address");
-      } else {
-        throw new Error(`Expected invalid, got ${result.kind}`);
+      try {
+        parse(invalidAddress);
+      } catch (error) {
+        expect(error).toBeInstanceOf(AddressParseError);
+        if (error instanceof AddressParseError) {
+          expect(error.code).toBe("UNKNOWN_PREFIX");
+          expect(error.input).toBe(invalidAddress);
+          expect(error.message).toBe("Invalid address");
+        }
       }
     });
 
-    it("should return invalid for seed key (S prefix)", () => {
+    it("should throw AddressParseError for seed key (S prefix)", () => {
       const seedKey =
         "SBZVMB74W5CWLWHLMIUBJD3JXWQGBU4QSI6YZFG5CKJLQX5YFZZXCVQN";
-      const result = parse(seedKey);
-
-      if (result.kind === "invalid") {
-        expect(result.error.code).toBe("UNKNOWN_PREFIX");
-      } else {
-        throw new Error(`Expected invalid, got ${result.kind}`);
-      }
+      expect(() => parse(seedKey)).toThrowError(AddressParseError);
     });
 
-    it("should return invalid for federation address", () => {
+    it("should throw AddressParseError for federation address", () => {
       const fedAddress = "alice*stellar.org";
-      const result = parse(fedAddress);
-
-      if (result.kind === "invalid") {
-        expect(result.error.code).toBe("UNKNOWN_PREFIX");
-      } else {
-        throw new Error(`Expected invalid, got ${result.kind}`);
-      }
+      expect(() => parse(fedAddress)).toThrowError(AddressParseError);
     });
 
-    it("should return invalid for empty string", () => {
-      const result = parse("");
-      if (result.kind === "invalid") {
-        expect(result.error.code).toBe("UNKNOWN_PREFIX");
-      } else {
-        throw new Error(`Expected invalid, got ${result.kind}`);
-      }
+    it("should throw AddressParseError for empty string", () => {
+      expect(() => parse("")).toThrowError(AddressParseError);
     });
 
-    it("should return invalid for G address with invalid checksum", () => {
+    it("should throw AddressParseError for G address with invalid checksum", () => {
       const invalidChecksum =
         "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2X";
-      const result = parse(invalidChecksum);
 
-      if (result.kind === "invalid") {
-        expect(result.error.code).toBe("INVALID_CHECKSUM");
-        expect(result.error.input).toBe(invalidChecksum);
-      } else {
-        throw new Error(`Expected invalid, got ${result.kind}`);
+      expect(() => parse(invalidChecksum)).toThrowError(AddressParseError);
+      try {
+        parse(invalidChecksum);
+      } catch (error) {
+        expect(error).toBeInstanceOf(AddressParseError);
+        if (error instanceof AddressParseError) {
+          expect(error.code).toBe("INVALID_CHECKSUM");
+          expect(error.input).toBe(invalidChecksum);
+        }
       }
     });
 
-    it("should return invalid for random string", () => {
-      const result = parse("not_an_address_at_all");
-      expect(result.kind).toBe("invalid");
+    it("should throw AddressParseError for random string", () => {
+      expect(() => parse("not_an_address_at_all")).toThrowError(
+        AddressParseError
+      );
     });
   });
 
   describe("edge cases", () => {
-    it("should return invalid for address with whitespace", () => {
+    it("should throw AddressParseError for address with whitespace", () => {
       const addressWithSpace =
         " GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H ";
-      expect(parse(addressWithSpace).kind).toBe("invalid");
+      expect(() => parse(addressWithSpace)).toThrowError(AddressParseError);
     });
 
-    it("should return invalid for very short string", () => {
-      expect(parse("G").kind).toBe("invalid");
+    it("should throw AddressParseError for very short string", () => {
+      expect(() => parse("G")).toThrowError(AddressParseError);
     });
 
-    it("should return invalid for string with correct length but wrong prefix", () => {
-      expect(parse("X".repeat(56)).kind).toBe("invalid");
+    it("should throw AddressParseError for string with correct length but wrong prefix", () => {
+      expect(() => parse("X".repeat(56))).toThrowError(AddressParseError);
+
     });
   });
 });
