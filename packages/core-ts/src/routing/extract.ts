@@ -1,7 +1,6 @@
 import { RoutingInput, RoutingResult, Warning } from "./types";
 import { parse } from "../address/parse";
 import { AddressParseError } from "../address/errors";
-import { decodeMuxed } from "../muxed/decode";
 import { normalizeMemoTextId } from "./memo";
 
 export class ExtractRoutingError extends Error {
@@ -57,13 +56,14 @@ export function extractRouting(input: RoutingInput): RoutingResult {
 
   if (parsed.kind === "invalid") {
     return {
-      source: "none",
+      destinationBaseAccount: null,
+      routingId: null,
+      routingSource: "none",
       warnings: [],
     };
   }
 
   if (parsed.kind === "C") {
-
     const warnings: Warning[] = [...parsed.warnings];
 
     warnings.push({
@@ -79,13 +79,9 @@ export function extractRouting(input: RoutingInput): RoutingResult {
       routingSource: "none",
       warnings,
     };
-
-    throw new ExtractRoutingError("Contract addresses cannot be routed");
-
   }
 
   if (parsed.kind === "M") {
-    const { baseG, id } = decodeMuxed(parsed.address);
     const warnings: Warning[] = [...parsed.warnings];
 
     if (
@@ -108,13 +104,14 @@ export function extractRouting(input: RoutingInput): RoutingResult {
     }
 
     return {
-      source: "muxed",
-      id,
+      destinationBaseAccount: parsed.baseG,
+      routingId: parsed.muxedId,
+      routingSource: "muxed",
       warnings,
     };
   }
 
-  let routingId: string | null = null;
+  let routingId: string | bigint | null = null;
   let routingSource: "none" | "memo" = "none";
   const warnings: Warning[] = [...parsed.warnings];
 
@@ -165,115 +162,9 @@ export function extractRouting(input: RoutingInput): RoutingResult {
   }
 
   return {
-    source: routingSource,
-    id: routingId ? BigInt(routingId) : undefined,
+    destinationBaseAccount: parsed.address,
+    routingId,
+    routingSource,
     warnings,
   };
-}
-
-/**
- * Extracts routing information from a Stellar G-address or M-address.
- *
- * Assignment requirement implemented here:
- *   "When an M-address is provided alongside a conflicting transaction memo,
- *    the memo must be ignored and a 'memo-ignored' warning must be emitted."
- *
- * Built on @stellar/stellar-sdk (StrKey, MuxedAccount).
- * This library will never ship inside the SDK itself – that is the boundary.
- */
-
-import { MuxedAccount, StrKey } from "@stellar/stellar-sdk";
-import type { ExtractOptions, RoutingResult } from "../types/index.js";
-
-// ─── Internal helpers ─────────────────────────────────────────────────────────
-
-/**
- * Returns `true` when the supplied string begins with the M-address prefix
- * ("M") and passes StrKey validation for a muxed account.
- *
- * We deliberately test the prefix first so we can give a clear, early
- * rejection path before handing off to the SDK decoder (which throws on
- * malformed input).
- */
-function isMuxedAddress(address: string): boolean {
-  if (!address.startsWith("M")) {
-    return false;
-  }
-  return StrKey.isValidMed25519PublicKey(address);
-}
-
-/**
- * Returns `true` for a standard G-address.
- */
-function isGAddress(address: string): boolean {
-  return StrKey.isValidEd25519PublicKey(address);
-}
-
-// ─── Public API ───────────────────────────────────────────────────────────────
-
-/**
- * Decodes a Stellar address (G-address **or** M-address) and returns the
- * canonical routing information needed to credit an incoming payment.
- *
- * ### M-address + memo conflict  ← **Assignment requirement**
- *
- * An M-address already encodes the destination account *and* a uint64 memo id
- * in a single string (SEP-0023).  When a caller additionally supplies an
- * `incomingMemo`, those two sources are in conflict.  Per the spec:
- *
- * > "the memo must be ignored and a `'memo-ignored'` warning must be emitted"
- *
- * The returned `RoutingResult` will therefore:
- *  - contain the `memoId` extracted from the M-address itself, and
- *  - include `"memo-ignored"` in its `warnings` array.
- *
- * @param options - See {@link ExtractOptions}
- * @returns       - See {@link RoutingResult}
- * @throws        `Error` when `address` is neither a valid G-address nor a
- *                valid M-address.
- */
-export function extractRoutingLegacy(options: ExtractOptions): RoutingResult {
-  const { address, incomingMemo } = options;
-
-  // ── Branch 1: M-address ──────────────────────────────────────────────────
-  if (isMuxedAddress(address)) {
-    // Decode via the SDK.  MuxedAccount.fromAddress() does the heavy lifting:
-    // base32 decode → checksum verify → split into 256-bit Ed25519 key +
-    // 64-bit id.  We use .baseAccount() to recover the underlying G-address.
-    const muxed = MuxedAccount.fromAddress(address, "0");
-    const accountId = muxed.baseAccount().accountId();
-
-    // The uint64 id is returned as a string by the SDK, which correctly
-    // preserves values above Number.MAX_SAFE_INTEGER (2^53-1).
-    const memoId = muxed.id();
-
-    // Initialise a clean warnings list.
-    const warnings: RoutingResult["warnings"] = [];
-
-    // ── ASSIGNMENT REQUIREMENT ──────────────────────────────────────────────
-    // After decoding an M-address, check if an incomingMemo was also provided.
-    // If so, append a 'memo-ignored' warning to the result's warnings array.
-    if (incomingMemo !== undefined && incomingMemo !== null) {
-      warnings.push("memo-ignored");
-    }
-    // ───────────────────────────────────────────────────────────────────────
-
-    return { accountId, memoId, warnings };
-  }
-
-  // ── Branch 2: G-address ──────────────────────────────────────────────────
-  if (isGAddress(address)) {
-    // Plain G-address: no memo embedded, pass incomingMemo through unchanged.
-    return {
-      accountId: address,
-      // memoId is intentionally absent for G-addresses.
-      warnings: [],
-    };
-  }
-
-  // ── Branch 3: Invalid address ────────────────────────────────────────────
-  throw new Error(
-    `Invalid Stellar address: "${address}". ` +
-      `Expected a valid G-address (Ed25519) or M-address (muxed/Med25519).`
-  );
 }
