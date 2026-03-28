@@ -2,6 +2,8 @@ import '../address/detect.dart';
 import '../address/codes.dart';
 import '../exceptions.dart';
 import '../util/strkey.dart';
+import 'decode.dart';
+import 'decoded_muxed_address.dart';
 import 'encode.dart';
 
 /// Class for handling Stellar Muxed Addresses (M... addresses).
@@ -29,6 +31,15 @@ class MuxedAddress {
     }
 
     return MuxedEncoder.encodeMuxed(_decodeG(baseG), id);
+  }
+
+  static DecodedMuxedAddress decode(String mAddress) {
+    try {
+      return MuxedDecoder.decodeMuxedString(mAddress);
+    } catch (e) {
+      if (e is StellarAddressException) rethrow;
+      throw StellarAddressException('Failed to decode M address: $e');
+    }
   }
 
   static List<int> _decodeG(String g) {

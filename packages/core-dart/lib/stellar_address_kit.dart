@@ -7,6 +7,7 @@ export 'src/address/parse.dart';
 export 'src/address/codes.dart';
 export 'src/muxed/encode.dart';
 export 'src/muxed/decode.dart';
+export 'src/muxed/decoded_muxed_address.dart';
 export 'src/routing/extract.dart';
 export 'src/routing/result.dart';
 export 'src/routing/memo.dart';
