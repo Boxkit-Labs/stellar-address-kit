@@ -360,3 +360,20 @@ func routingIDEqual(a, b *RoutingID) bool {
 	}
 	return a.String() == b.String()
 }
+
+func TestApplyMemoRequirement(t *testing.T) {
+	result := ExtractRouting(RoutingInput{Destination: testBaseG, MemoType: "none"})
+	result = ApplyMemoRequirement(result, &MemoRequirement{RequiringMemo: true})
+
+	if len(result.Warnings) != 1 || result.Warnings[0].Code != address.WarnMissingRequiredMemo {
+		t.Fatalf("expected MISSING_REQUIRED_MEMO warning, got %#v", result.Warnings)
+	}
+
+	withMemo := ExtractRouting(RoutingInput{Destination: testBaseG, MemoType: "id", MemoValue: "123"})
+	withMemo = ApplyMemoRequirement(withMemo, &MemoRequirement{RequiringMemo: true})
+	for _, warning := range withMemo.Warnings {
+		if warning.Code == address.WarnMissingRequiredMemo {
+			t.Fatalf("did not expect MISSING_REQUIRED_MEMO when routing id is present")
+		}
+	}
+}

@@ -32,11 +32,14 @@ var index_exports = {};
 __export(index_exports, {
   AddressParseError: () => AddressParseError,
   ExtractRoutingError: () => ExtractRoutingError,
+  applyMemoRequirement: () => applyMemoRequirement,
   decodeMuxed: () => decodeMuxed,
   detect: () => detect,
   encodeMuxed: () => encodeMuxed,
   extractRouting: () => extractRouting,
   extractRoutingFromTx: () => extractRoutingFromTx,
+  extractRoutingWithMemoRequirement: () => extractRoutingWithMemoRequirement,
+  fetchMemoRequirement: () => fetchMemoRequirement,
   normalizeMemoTextId: () => normalizeMemoTextId,
   parse: () => parse,
   routingIdAsBigInt: () => routingIdAsBigInt,
@@ -395,15 +398,74 @@ function routingIdAsBigInt(routingId) {
   }
   return typeof routingId === "bigint" ? routingId : BigInt(routingId);
 }
+
+// src/routing/memoRequirement.ts
+function decodeBase64(value) {
+  return atob(value);
+}
+function parseMemoRequirementValue(value) {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return false;
+  const decoded = (() => {
+    try {
+      return decodeBase64(value).trim();
+    } catch {
+      return value.trim();
+    }
+  })();
+  if (decoded === "true" || decoded === "1") return true;
+  if (decoded === "false" || decoded === "0" || decoded === "") return false;
+  try {
+    const json = JSON.parse(decoded);
+    return json === true || json?.requiring_memo === true;
+  } catch {
+    return false;
+  }
+}
+async function fetchMemoRequirement(baseAccount, horizonUrl = "https://horizon.stellar.org") {
+  const response = await fetch(
+    `${horizonUrl.replace(/\/$/, "")}/accounts/${encodeURIComponent(baseAccount)}`
+  );
+  if (!response.ok) {
+    throw new Error(`Unable to fetch SEP-0029 memo requirement: ${response.status}`);
+  }
+  const account = await response.json();
+  const attrs = account?.data_attr ?? {};
+  const value = attrs["config.requiring_memo"] ?? attrs["config.memo_required"];
+  return { requiringMemo: parseMemoRequirementValue(value) };
+}
+function applyMemoRequirement(result, requirement) {
+  if (!requirement?.requiringMemo || result.routingId !== null) {
+    return result;
+  }
+  const warning = {
+    code: "MISSING_REQUIRED_MEMO",
+    severity: "error",
+    message: "Destination account requires a memo/routing ID under SEP-0029, but none was provided."
+  };
+  return {
+    ...result,
+    warnings: [...result.warnings, warning]
+  };
+}
+async function extractRoutingWithMemoRequirement(input, fetcher = fetchMemoRequirement) {
+  const result = extractRouting(input);
+  if (!result.destinationBaseAccount) return result;
+  const requirement = await fetcher(result.destinationBaseAccount);
+  return applyMemoRequirement(result, requirement);
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   AddressParseError,
   ExtractRoutingError,
+  applyMemoRequirement,
   decodeMuxed,
   detect,
   encodeMuxed,
   extractRouting,
   extractRoutingFromTx,
+  extractRoutingWithMemoRequirement,
+  fetchMemoRequirement,
   normalizeMemoTextId,
   parse,
   routingIdAsBigInt,
