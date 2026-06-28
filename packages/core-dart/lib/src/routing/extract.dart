@@ -4,10 +4,30 @@ import '../muxed/decode.dart';
 import 'routing_result.dart';
 import 'memo.dart';
 
+const _severityRank = {'info': 0, 'warn': 1, 'error': 2};
+
+List<RoutingWarning> _filterBySeverity(List<RoutingWarning> warnings, String min) {
+  final minRank = _severityRank[min] ?? 0;
+  return warnings.where((w) => (_severityRank[w.severity] ?? 0) >= minRank).toList();
+}
+
 /// Extracts deposit routing information from a Stellar payment input.
 /// Following the standard priority policy, M-address identifiers take
 /// precedence over any provided memo.
 RoutingResult extractRouting(RoutingInput input) {
+  final result = _extractRouting(input);
+  final min = input.minSeverityLevel ?? 'info';
+  if (min == 'info') return result;
+  return RoutingResult(
+    source: result.source,
+    id: result.id,
+    warnings: _filterBySeverity(result.warnings.toList(), min),
+    destinationBaseAccount: result.destinationBaseAccount,
+    destinationError: result.destinationError,
+  );
+}
+
+RoutingResult _extractRouting(RoutingInput input) {
   final trimmed = input.destination.trim();
   if (trimmed.isEmpty) {
     throw const ExtractRoutingException('Invalid input: destination must be a non-empty string.');

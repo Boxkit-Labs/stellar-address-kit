@@ -103,11 +103,16 @@ class RoutingInput {
   /// The source account address of the transaction.
   final String? sourceAccount;
 
+  /// Minimum severity level for warnings to include in the result.
+  /// Defaults to 'info' (all warnings returned). Valid values: 'info', 'warn', 'error'.
+  final String? minSeverityLevel;
+
   RoutingInput({
     required this.destination,
     required this.memoType,
     this.memoValue,
     this.sourceAccount,
+    this.minSeverityLevel,
   });
 }
 

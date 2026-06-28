@@ -1,4 +1,4 @@
-import { RoutingInput, RoutingResult } from "./types";
+import { RoutingInput, RoutingResult, filterBySeverity } from "./types";
 import { Warning } from "../address/types";
 import { parse } from "../address/parse";
 import { AddressParseError } from "../address/errors";
@@ -44,6 +44,12 @@ function assertRoutableAddress(destination: string): void {
  * @returns A result containing the base account, routing ID, source, and any warnings.
  */
 export function extractRouting(input: RoutingInput): RoutingResult {
+  const result = _extractRouting(input);
+  const min = input.minSeverityLevel ?? "info";
+  return min === "info" ? result : { ...result, warnings: filterBySeverity(result.warnings, min) };
+}
+
+function _extractRouting(input: RoutingInput): RoutingResult {
   assertRoutableAddress(input.destination);
 
   let parsed;

@@ -32,6 +32,14 @@ func normalizeUnsupportedMemoType(memoType string) string {
 // take precedence over any provided memo. Returns a RoutingResult with the decoded 
 // state and applicable warnings.
 func ExtractRouting(input RoutingInput) RoutingResult {
+	result := extractRouting(input)
+	if input.MinSeverityLevel != "" && input.MinSeverityLevel != SeverityInfo {
+		result.Warnings = filterWarnings(result.Warnings, input.MinSeverityLevel)
+	}
+	return result
+}
+
+func extractRouting(input RoutingInput) RoutingResult {
 	if input.SourceAccount != "" {
 		source, err := address.Parse(input.SourceAccount)
 		if err == nil && source.Kind == address.KindC {
