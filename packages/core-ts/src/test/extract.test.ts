@@ -281,3 +281,24 @@ describe("multi-warning: NON_CANONICAL_ROUTING_ID + MEMO_ID_INVALID_FORMAT", () 
     }
   });
 });
+
+describe("SEP-0029 memo requirement", () => {
+  it("appends MISSING_REQUIRED_MEMO when a required G-address memo is absent", async () => {
+    const { extractRoutingWithMemoRequirement } = await import("../routing/memoRequirement");
+    const result = await extractRoutingWithMemoRequirement(input(G_ADDRESS), async () => ({
+      requiringMemo: true,
+    }));
+
+    expect(result.warnings.at(-1)?.code).toBe("MISSING_REQUIRED_MEMO");
+    expect(result.warnings.at(-1)?.severity).toBe("error");
+  });
+
+  it("does not append MISSING_REQUIRED_MEMO when a routing ID is present", async () => {
+    const { extractRoutingWithMemoRequirement } = await import("../routing/memoRequirement");
+    const result = await extractRoutingWithMemoRequirement(input(G_ADDRESS, "id", "123"), async () => ({
+      requiringMemo: true,
+    }));
+
+    expect(result.warnings.map((warning) => warning.code)).not.toContain("MISSING_REQUIRED_MEMO");
+  });
+});

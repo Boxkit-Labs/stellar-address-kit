@@ -17,7 +17,7 @@ declare class AddressParseError extends Error {
 declare function detect(address: string): "G" | "M" | "C" | "invalid";
 
 type AddressKind = "G" | "M" | "C";
-type WarningCode = "NON_CANONICAL_ADDRESS" | "NON_CANONICAL_ROUTING_ID" | "MEMO_IGNORED_FOR_MUXED" | "MEMO_PRESENT_WITH_MUXED" | "CONTRACT_SENDER_DETECTED" | "MEMO_TEXT_UNROUTABLE" | "MEMO_ID_INVALID_FORMAT" | "UNSUPPORTED_MEMO_TYPE" | "INVALID_DESTINATION";
+type WarningCode = "NON_CANONICAL_ADDRESS" | "NON_CANONICAL_ROUTING_ID" | "MEMO_IGNORED_FOR_MUXED" | "MEMO_PRESENT_WITH_MUXED" | "CONTRACT_SENDER_DETECTED" | "MEMO_TEXT_UNROUTABLE" | "MEMO_ID_INVALID_FORMAT" | "UNSUPPORTED_MEMO_TYPE" | "INVALID_DESTINATION" | "MISSING_REQUIRED_MEMO";
 type Warning = {
     code: "NON_CANONICAL_ADDRESS" | "NON_CANONICAL_ROUTING_ID";
     severity: "warn";
@@ -178,4 +178,18 @@ type NormalizeResult = {
  */
 declare function normalizeMemoTextId(s: string): NormalizeResult;
 
-export { type Address, type AddressKind, AddressParseError, type ErrorCode, ExtractRoutingError, type KnownMemoType, type NormalizeResult, type ParseResult, type RoutingInput, type RoutingResult, type RoutingSource, type Warning, type WarningCode, decodeMuxed, detect, encodeMuxed, extractRouting, extractRoutingFromTx, normalizeMemoTextId, parse, routingIdAsBigInt, validate };
+type MemoRequirement = {
+    requiringMemo: boolean;
+};
+type MemoRequirementFetcher = (baseAccount: string) => Promise<MemoRequirement | null>;
+/**
+ * Fetches SEP-0029 memo requirement configuration from a Horizon account.
+ *
+ * The helper is optional by design: callers provide a Horizon URL when they want
+ * network-backed checks, and pass the result to `applyMemoRequirement`.
+ */
+declare function fetchMemoRequirement(baseAccount: string, horizonUrl?: string): Promise<MemoRequirement>;
+declare function applyMemoRequirement(result: RoutingResult, requirement: MemoRequirement | null | undefined): RoutingResult;
+declare function extractRoutingWithMemoRequirement(input: RoutingInput, fetcher?: MemoRequirementFetcher): Promise<RoutingResult>;
+
+export { type Address, type AddressKind, AddressParseError, type ErrorCode, ExtractRoutingError, type KnownMemoType, type MemoRequirement, type MemoRequirementFetcher, type NormalizeResult, type ParseResult, type RoutingInput, type RoutingResult, type RoutingSource, type Warning, type WarningCode, applyMemoRequirement, decodeMuxed, detect, encodeMuxed, extractRouting, extractRoutingFromTx, extractRoutingWithMemoRequirement, fetchMemoRequirement, normalizeMemoTextId, parse, routingIdAsBigInt, validate };

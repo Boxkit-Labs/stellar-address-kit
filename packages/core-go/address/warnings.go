@@ -12,6 +12,7 @@ const (
 	WarnMemoIDInvalidFormat    WarningCode = "MEMO_ID_INVALID_FORMAT"
 	WarnUnsupportedMemoType    WarningCode = "UNSUPPORTED_MEMO_TYPE"
 	WarnInvalidDestination     WarningCode = "INVALID_DESTINATION"
+	WarnMissingRequiredMemo    WarningCode = "MISSING_REQUIRED_MEMO"
 )
 
 type Warning struct {

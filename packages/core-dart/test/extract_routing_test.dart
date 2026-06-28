@@ -1,4 +1,5 @@
 import 'package:stellar_address_kit/stellar_address_kit.dart';
+import 'package:stellar_address_kit/src/address/codes.dart' as codes;
 import 'package:test/test.dart';
 
 void main() {
@@ -86,4 +87,28 @@ void main() {
       );
     });
   });
+  group('SEP-0029 memo requirement', () {
+    test('appends MISSING_REQUIRED_MEMO when required memo is absent', () {
+      final result = applyMemoRequirement(
+        extractRouting(RoutingInput(destination: baseG, memoType: 'none')),
+        const MemoRequirement(requiringMemo: true),
+      );
+
+      expect(result.warnings.last.code, codes.WarningCode.missingRequiredMemo);
+      expect(result.warnings.last.severity, 'error');
+    });
+
+    test('does not append MISSING_REQUIRED_MEMO when routing id is present', () {
+      final result = applyMemoRequirement(
+        extractRouting(RoutingInput(destination: baseG, memoType: 'id', memoValue: '123')),
+        const MemoRequirement(requiringMemo: true),
+      );
+
+      expect(
+        result.warnings.map((warning) => warning.code),
+        isNot(contains(codes.WarningCode.missingRequiredMemo)),
+      );
+    });
+  });
+
 }

@@ -9,3 +9,5 @@ export * from "./routing/extract";
 export * from "./routing/extractFromTx";
 export * from "./routing/types";
 export * from "./routing/memo";
+
+export * from "./routing/memoRequirement";
