@@ -13,3 +13,4 @@ export 'src/routing/routing_result.dart';
 export 'src/routing/memo.dart';
 export 'src/muxed/muxed_address.dart';
 export 'src/exceptions.dart';
+export 'src/routing/memo_requirement.dart';

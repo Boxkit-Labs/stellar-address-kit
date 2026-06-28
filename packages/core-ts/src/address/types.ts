@@ -10,7 +10,8 @@ export type WarningCode =
   | "MEMO_TEXT_UNROUTABLE"
   | "MEMO_ID_INVALID_FORMAT"
   | "UNSUPPORTED_MEMO_TYPE"
-  | "INVALID_DESTINATION";
+  | "INVALID_DESTINATION"
+  | "MISSING_REQUIRED_MEMO";
 
 export type Warning =
   | {

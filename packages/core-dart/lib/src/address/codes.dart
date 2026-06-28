@@ -66,6 +66,9 @@ abstract final class WarningCode {
 
   /// The destination is a smart contract, which is invalid for classic payments.
   static const invalidDestination = 'INVALID_DESTINATION';
+
+  /// SEP-0029 requires a memo/routing ID, but none was supplied.
+  static const missingRequiredMemo = 'MISSING_REQUIRED_MEMO';
 }
 
 /// Represents a warning encountered during address parsing or routing.
