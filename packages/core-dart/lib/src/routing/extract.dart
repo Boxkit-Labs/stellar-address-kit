@@ -4,11 +4,28 @@ import '../muxed/decode.dart';
 import 'routing_result.dart';
 import 'memo.dart';
 
+String _sanitizeAddress(String raw) {
+  final cleaned = raw
+      .replaceAll(RegExp(
+        r'[\u0000-\u001F\u007F-\u009F\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5'
+        r'\u180B-\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\u3164\uFEFF\uFFA0'
+        r'\r\n\t]',
+      ), '')
+      .trim();
+  return cleaned;
+}
+
 /// Extracts deposit routing information from a Stellar payment input.
 /// Following the standard priority policy, M-address identifiers take
 /// precedence over any provided memo.
 RoutingResult extractRouting(RoutingInput input) {
-  final trimmed = input.destination.trim();
+  final original = input.destination;
+  final sanitized = _sanitizeAddress(original);
+  if (sanitized != original.trim()) {
+    print('[stellar-address-kit] SANITIZED_HIDDEN_CHARS: Input contained hidden characters and was sanitized before processing.');
+  }
+
+  final trimmed = sanitized.trim();
   if (trimmed.isEmpty) {
     throw const ExtractRoutingException('Invalid input: destination must be a non-empty string.');
   }
@@ -16,7 +33,7 @@ RoutingResult extractRouting(RoutingInput input) {
   final prefix = trimmed[0].toUpperCase();
   if (prefix != 'G' && prefix != 'M') {
     throw ExtractRoutingException(
-      'Invalid destination: expected a G or M address, got "${input.destination}".',
+      'Invalid destination: expected a G or M address, got "$sanitized".',
     );
   }
 
@@ -34,7 +51,7 @@ RoutingResult extractRouting(RoutingInput input) {
     }
   }
 
-  final parsed = parse(input.destination);
+  final parsed = parse(sanitized);
 
   if (parsed.kind == null) {
     return RoutingResult(

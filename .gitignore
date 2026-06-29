@@ -1,3 +1,8 @@
+
 node_modules/
 __pycache__/
 build/
+packages/core-ts/node_modules/
+node_modules
+node_modules
+node_modules
