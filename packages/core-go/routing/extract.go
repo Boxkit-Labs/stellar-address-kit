@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"log"
 	"strconv"
 	"strings"
 
@@ -40,6 +41,28 @@ func normalizeUnsupportedMemoType(memoType string) string {
 	}
 }
 
+// sanitizeAddress strips hidden Unicode control characters and invisible
+// formatting characters from an address string, then trims whitespace.
+func sanitizeAddress(raw string) (string, bool) {
+	var b strings.Builder
+	b.Grow(len(raw))
+	for _, r := range raw {
+		if r <= 0x1f || (0x7f <= r && r <= 0x9f) ||
+			r == 0xad || r == 0x34f || r == 0x61c ||
+			r == 0x115f || r == 0x1160 || r == 0x17b4 || r == 0x17b5 ||
+			(0x180b <= r && r <= 0x180e) ||
+			(0x200b <= r && r <= 0x200f) ||
+			(0x202a <= r && r <= 0x202e) ||
+			(0x2060 <= r && r <= 0x206f) ||
+			r == 0x3164 || r == 0xfeff || r == 0xffa0 {
+			continue
+		}
+		b.WriteRune(r)
+	}
+	cleaned := strings.TrimSpace(b.String())
+	return cleaned, cleaned != strings.TrimSpace(raw)
+}
+
 // ExtractRouting identifies the deposit routing destination and identifier from a Stellar
 // payment input. It implements the standard priority policy where M-address identifiers
 // take precedence over any provided memo. Returns a RoutingResult with the decoded
@@ -59,7 +82,12 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 		}
 	}
 
-	parsed, err := address.Parse(input.Destination)
+	sanitized, wasSanitized := sanitizeAddress(input.Destination)
+	if wasSanitized {
+		log.Println("[stellar-address-kit] SANITIZED_HIDDEN_CHARS: Input contained hidden characters and was sanitized before processing.")
+	}
+
+	parsed, err := address.Parse(sanitized)
 	if err != nil {
 		addrErr, ok := err.(*address.AddressError)
 		if !ok {

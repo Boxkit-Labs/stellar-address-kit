@@ -292,6 +292,81 @@
         "negative",
         "edge"
       ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "G-address with leading zero-width space - should resolve identically",
+      "input": {
+        "destination": "\u200bGAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "memoType": "none"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": null,
+        "routingSource": "none",
+        "warnings": []
+      },
+      "tags": ["positive", "regression"]
+    },
+    {
+      "module": "extract_routing",
+      "description": "G-address with trailing CRLF - should resolve identically",
+      "input": {
+        "destination": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI\r\n",
+        "memoType": "none"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": null,
+        "routingSource": "none",
+        "warnings": []
+      },
+      "tags": ["positive", "regression"]
+    },
+    {
+      "module": "extract_routing",
+      "description": "M-address with embedded ZWNJ - should resolve identically",
+      "input": {
+        "destination": "MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQAC\u200cABAAAAAAAAAAEVIG",
+        "memoType": "none"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": "9007199254740993",
+        "routingSource": "muxed",
+        "warnings": []
+      },
+      "tags": ["positive", "regression"]
+    },
+    {
+      "module": "extract_routing",
+      "description": "G-address with BOM prefix - should resolve identically",
+      "input": {
+        "destination": "\ufeffGAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "memoType": "none"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": null,
+        "routingSource": "none",
+        "warnings": []
+      },
+      "tags": ["positive", "regression"]
+    },
+    {
+      "module": "extract_routing",
+      "description": "G-address with scattered invisible characters - should resolve identically",
+      "input": {
+        "destination": "\u200bGAYCUYT553C5LHVE2XP\u200cW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI\uFEFF",
+        "memoType": "none"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": null,
+        "routingSource": "none",
+        "warnings": []
+      },
+      "tags": ["positive", "regression"]
     }
   ]
 }
