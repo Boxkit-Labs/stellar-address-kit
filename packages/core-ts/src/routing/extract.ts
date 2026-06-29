@@ -12,6 +12,13 @@ export class ExtractRoutingError extends Error {
   }
 }
 
+function sanitizeAddress(raw: string): string {
+  return raw
+    .replace(/[\u0000-\u001F\u007F-\u009F\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\u3164\uFEFF\uFFA0]/g, '')
+    .replace(/[\r\n\t]/g, '')
+    .trim();
+}
+
 /**
  * Validates that the destination string passes the minimum structural
  * requirements for a Stellar address before routing logic is applied.
@@ -44,11 +51,17 @@ function assertRoutableAddress(destination: string): void {
  * @returns A result containing the base account, routing ID, source, and any warnings.
  */
 export function extractRouting(input: RoutingInput): RoutingResult {
-  assertRoutableAddress(input.destination);
+  const rawDestination = input.destination;
+  const sanitizedDestination = sanitizeAddress(rawDestination);
+  if (sanitizedDestination !== rawDestination) {
+    console.info('[stellar-address-kit] SANITIZED_HIDDEN_CHARS: Input contained hidden characters and was sanitized before processing.');
+  }
+  const sanitizedInput: RoutingInput = { ...input, destination: sanitizedDestination };
+  assertRoutableAddress(sanitizedInput.destination);
 
   let parsed;
   try {
-    parsed = parse(input.destination);
+    parsed = parse(sanitizedInput.destination);
   } catch (error) {
     if (error instanceof AddressParseError) {
       return {
