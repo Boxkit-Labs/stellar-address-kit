@@ -46,7 +46,7 @@ void main() {
           caseData['description']?.toString() ?? 'Unnamed';
       final String module = caseData['module']?.toString() ?? '';
 
-      test('$module: $description', () {
+      test('$module: $description', () async {
         final input = caseData['input'] as Map<String, dynamic>;
         final expected = caseData['expected'] as Map<String, dynamic>;
 
@@ -95,7 +95,7 @@ void main() {
             );
 
             try {
-              final result = extractRouting(routingInput);
+              final result = await extractRouting(routingInput);
 
               expect(result.destinationBaseAccount,
                   normalizeExpectedBaseAccount(expected['destinationBaseAccount']));

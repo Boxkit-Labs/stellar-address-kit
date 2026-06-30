@@ -1,6 +1,6 @@
 import 'package:stellar_address_kit/stellar_address_kit.dart';
 
-void main() {
+void main() async {
   // 1. Detect and Validate address types
   const gAddress = 'GA7QYNF7SOWQ3GLR2B6RS22TBGZAOR6KLYH4PA5ZAM73A3H4K2HZZSQU';
   
@@ -21,9 +21,9 @@ void main() {
   final decoded = MuxedAddress.decode(mAddress);
   print('Decoded ID: ${decoded.id}'); // 12345
 
-  // 5. Extract routing information from an incoming payment
+  // 5. Extract routing information from an incoming payment (async API)
   // This is used to reconcile deposits in a pooled account.
-  final result = extractRouting(RoutingInput(
+  final result = await extractRouting(RoutingInput(
     destination: mAddress,
     memoType: 'none',
     memoValue: null,
@@ -31,4 +31,14 @@ void main() {
 
   print('Routing ID: ${result.id}'); // 12345
   print('Routing Source: ${result.source}'); // RoutingSource.muxed
+
+  // 6. Synchronous variant for pure string parsing
+  final syncResult = extractRoutingSync(RoutingInput(
+    destination: mAddress,
+    memoType: 'none',
+    memoValue: null,
+  ));
+
+  print('Sync Routing ID: ${syncResult.id}'); // 12345
+  print('Sync Routing Source: ${syncResult.source}'); // RoutingSource.muxed
 }

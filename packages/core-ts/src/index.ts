@@ -7,5 +7,6 @@ export * from "./muxed/encode";
 export * from "./muxed/decode";
 export * from "./routing/extract";
 export * from "./routing/extractFromTx";
+export * from "./routing/extractFromURI";  // ← NEW
 export * from "./routing/types";
 export * from "./routing/memo";

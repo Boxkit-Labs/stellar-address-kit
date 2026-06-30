@@ -1,0 +1,80 @@
+name: verify-parity
+
+# Enforces behavioral parity of the shared test vectors across core-ts,
+# core-go, and core-dart. Triggered exclusively by changes to spec/vectors.json.
+#
+# NOTE: Do not mark this workflow (or its `parity-gate` job) as a *Required
+# Status Check* in branch protection unless the vectors file is modified by
+# every PR. Because the `paths` filter only fires on vectors.json changes,
+# PRs that don't touch vectors.json will leave required parity checks in
+# "Expected" / pending forever.
+
+# Minimum GITHUB_TOKEN scope: read-only. No deployments, no secret access.
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+      - "spec/vectors.json"
+
+# Cancel superseded runs when a PR is pushed to repeatedly while a check is
+# still in flight, saving CI minutes on rapid iteration.
+concurrency:
+  group: verify-parity-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  test-ts:
+    name: core-ts parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+      - run: pnpm install
+      - run: pnpm --filter stellar-address-kit test
+
+  test-go:
+    name: core-go parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+      - run: cd packages/core-go && go test ./...
+
+  test-dart:
+    name: core-dart parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+      - id: setup-chrome
+        uses: browser-actions/setup-chrome@v1
+      - run: cd packages/core-dart && dart pub get
+      - run: cd packages/core-dart && dart test
+      - run: cd packages/core-dart && dart test test/web_compat --platform chrome
+        env:
+          CHROME_EXECUTABLE: ${{ steps.setup-chrome.outputs.chrome-path }}
+
+  parity-gate:
+    name: parity gate
+    runs-on: ubuntu-latest
+    needs: [test-ts, test-go, test-dart]
+    if: always()
+    steps:
+      - name: Enforce parity across TS, Go, and Dart
+        if: needs.test-ts.result != 'success' || needs.test-go.result != 'success' || needs.test-dart.result != 'success'
+        run: |
+          echo "::error::Parity check failed: at least one implementation diverged from spec/vectors.json."
+          echo "::error::core-ts:   ${{ needs.test-ts.result }}"
+          echo "::error::core-go:   ${{ needs.test-go.result }}"
+          echo "::error::core-dart: ${{ needs.test-dart.result }}"
+          exit 1

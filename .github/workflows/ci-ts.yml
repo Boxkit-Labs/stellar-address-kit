@@ -5,6 +5,14 @@ on:
     paths:
       - "packages/core-ts/**"
       - "spec/**"
+    # `verify-parity` owns this file's CI surface; skip here to avoid
+    # duplicate runs on vectors-only PRs.
+    paths-ignore:
+      - "spec/vectors.json"
+    # Note: paths + paths-ignore combine as an AND across all changed files.
+    # If a PR changes spec/vectors.json *together with* packages/core-ts/**,
+    # this workflow is skipped; verify-parity.yml still runs the identical
+    # commands, so functional coverage is preserved under a different check.
 
 jobs:
   test:
