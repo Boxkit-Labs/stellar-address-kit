@@ -1,5 +1,5 @@
-import { isSuccessfulURIResult } from "../src/lib/extractRoutingFromURI";
-import { extractRoutingFromURI } from '../lib/extractRoutingFromURI';
+import { isSuccessfulURIResult } from "./extractFromURI";
+import { extractRoutingFromURI } from './extractFromURI';
 
 describe("extractRoutingFromURI", () => {
   describe("scheme validation", () => {
@@ -128,12 +128,12 @@ describe("extractRoutingFromURI", () => {
   describe("M-address handling", () => {
     it("passes M-address to extractRouting for canonical expansion", () => {
       const result = extractRoutingFromURI(
-        "web+stellar:pay?destination=MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLT7AV7Y6S33Z6S3CHBAAAAAAAAAAAAABQD"
+        "web+stellar:pay?destination=MBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OAAAAAAAAAAAPOGVY"
       );
       expect(result.success).toBe(true);
       if (isSuccessfulURIResult(result)) {
         // extractRouting should expand M-address to G-address + routingId
-        expect(result.routing.address).toMatch(/^G/);
+        expect(result.routing.destinationBaseAccount).toMatch(/^G/);
         expect(result.routing.routingId).toBeDefined();
       }
     });

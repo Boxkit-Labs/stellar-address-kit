@@ -155,10 +155,20 @@ export function extractRoutingFromURI(uriString: string): ExtractRoutingFromURIR
   // 8. Delegate to core extractRouting logic
   const routingResult = extractRouting(routingInput);
 
-  // 9. Return combined result
+  // 9. Normalize returned routing fields for URI extraction.
+  // Some Stellar SDK methods may return String wrapper objects instead of
+  // primitive strings for parsed address components.
+  const normalizedRouting = {
+    ...routingResult,
+    destinationBaseAccount:
+      routingResult.destinationBaseAccount === null
+        ? null
+        : String(routingResult.destinationBaseAccount),
+  };
+
   return {
     success: true,
-    routing: routingResult,
+    routing: normalizedRouting,
     rawParams,
   };
 }
