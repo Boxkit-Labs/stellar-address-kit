@@ -15,10 +15,12 @@ String _sanitizeAddress(String raw) {
   return cleaned;
 }
 
-/// Extracts deposit routing information from a Stellar payment input.
-/// Following the standard priority policy, M-address identifiers take
-/// precedence over any provided memo.
-RoutingResult extractRouting(RoutingInput input) {
+/// Extracts deposit routing information from a Stellar payment input synchronously.
+///
+/// This is the synchronous variant for pure string parsing.
+/// For future compatibility with async network checks (Federation, SEP-0029),
+/// use [extractRouting] instead.
+RoutingResult extractRoutingSync(RoutingInput input) {
   final original = input.destination;
   final sanitized = _sanitizeAddress(original);
   if (sanitized != original.trim()) {
@@ -26,12 +28,6 @@ RoutingResult extractRouting(RoutingInput input) {
   }
 
   final trimmed = sanitized.trim();
-///
-/// This is the synchronous variant for pure string parsing.
-/// For future compatibility with async network checks (Federation, SEP-0029),
-/// use [extractRouting] instead.
-RoutingResult extractRoutingSync(RoutingInput input) {
-  final trimmed = input.destination.trim();
   if (trimmed.isEmpty) {
     throw const ExtractRoutingException('Invalid input: destination must be a non-empty string.');
   }
