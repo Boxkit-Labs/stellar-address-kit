@@ -23,7 +23,7 @@ String _sanitizeAddress(String raw) {
 RoutingResult extractRoutingSync(RoutingInput input) {
   final original = input.destination;
   final sanitized = _sanitizeAddress(original);
-  if (sanitized != original.trim()) {
+  if (sanitized != original) {
     print('[stellar-address-kit] SANITIZED_HIDDEN_CHARS: Input contained hidden characters and was sanitized before processing.');
   }
 

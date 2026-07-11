@@ -1,5 +1,6 @@
 {
   "spec_version": "1.0.0",
+  "description": "Normative test vectors for the Stellar Address Kit. This file is the single source of truth for routing logic across TypeScript, Go, and Dart implementations. Any change to routing behavior MUST start here.",
   "cases": [
     {
       "module": "muxed_encode",
@@ -244,6 +245,25 @@
       },
       "tags": [
         "positive"
+      ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "G-address + MEMO_ID routing with 2^53+1 canary",
+      "input": {
+        "destination": "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1",
+        "memoType": "id",
+        "memoValue": "9007199254740993"
+      },
+      "expected": {
+        "destinationBaseAccount": "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1",
+        "routingId": "9007199254740993",
+        "routingSource": "memo",
+        "warnings": []
+      },
+      "tags": [
+        "positive",
+        "edge"
       ]
     },
     {

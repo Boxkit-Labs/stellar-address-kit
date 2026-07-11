@@ -63,6 +63,7 @@ jobs:
       - run: cd packages/core-dart && dart test test/web_compat --platform chrome
         env:
           CHROME_EXECUTABLE: ${{ steps.setup-chrome.outputs.chrome-path }}
+          CHROME_ARGS: --no-sandbox
 
   parity-gate:
     name: parity gate
