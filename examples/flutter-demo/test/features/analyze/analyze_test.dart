@@ -7,7 +7,7 @@ void main() {
     final useCase = AnalyzeAddress();
 
     test('should identify M-address and source correctly', () {
-      const muxed = 'MA7QYNF7SOWQ3GLR2B6RS22TBGZAOR6KLYH4PA5ZAM73A3H4K2HZZAAAAAAAAAGU97CQ';
+      const muxed = 'MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACAAAAAAAAABQHEJF6';
       final result = useCase(address: muxed);
       
       expect(result.addressKind, 'M');
@@ -16,7 +16,7 @@ void main() {
     });
 
     test('should identify G-address with Memo ID', () {
-      const gAddr = 'GA7QYNF7SOWQ3GLR2B6RS22TBGZAOR6KLYH4PA5ZAM73A3H4K2HZZSQU';
+      const gAddr = 'GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI';
       final result = useCase(address: gAddr, memoType: 'id', memoValue: '555');
       
       expect(result.addressKind, 'G');
@@ -25,7 +25,7 @@ void main() {
     });
 
     test('should identify C-address as invalid destination', () {
-      const cAddr = 'CA7QYNF7SOWQ3GLR2B6RS22TBGZAOR6KLYH4PA5ZAM73A3H4K2HZZSQU';
+      const cAddr = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
       final result = useCase(address: cAddr);
       
       expect(result.addressKind, 'C');

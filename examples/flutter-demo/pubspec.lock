@@ -443,10 +443,9 @@ packages:
   stellar_address_kit:
     dependency: "direct main"
     description:
-      name: stellar_address_kit
-      sha256: "8184e5e623c4895583c7233c463c3dd7787e0de8feae0d245723035cfa076abc"
-      url: "https://pub.dev"
-    source: hosted
+      path: "../../packages/core-dart"
+      relative: true
+    source: path
     version: "1.0.1"
   stream_channel:
     dependency: transitive

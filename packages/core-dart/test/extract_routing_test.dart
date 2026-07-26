@@ -129,8 +129,9 @@ void main() {
             result.id == null &&
             result.source == RoutingSource.none &&
             result.destinationError == null &&
-            result.warnings.map((w) => w.code).toList() ==
-                ['memo-ignored', 'MEMO_TEXT_UNROUTABLE'])),
+            result.warnings.length == 2 &&
+            result.warnings[0].code == 'memo-ignored' &&
+            result.warnings[1].code == 'MEMO_TEXT_UNROUTABLE')),
       );
     });
 

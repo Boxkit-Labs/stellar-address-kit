@@ -2,7 +2,7 @@ import 'package:stellar_address_kit/stellar_address_kit.dart';
 
 void main() async {
   // 1. Detect and Validate address types
-  const gAddress = 'GA7QYNF7SOWQ3GLR2B6RS22TBGZAOR6KLYH4PA5ZAM73A3H4K2HZZSQU';
+  const gAddress = 'GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI';
   
   if (validate(gAddress)) {
     final kind = detect(gAddress);

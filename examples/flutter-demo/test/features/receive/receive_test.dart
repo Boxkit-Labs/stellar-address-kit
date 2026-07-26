@@ -4,7 +4,7 @@ import 'package:stellar_address_kit_demo/features/receive/domain/usecases/genera
 import 'package:stellar_address_kit_demo/features/receive/presentation/bloc/receive_bloc.dart';
 
 void main() {
-  const testAddress = 'GA7QYNF7SOWQ3GLR2B6RS22TBGZAOR6KLYH4PA5ZAM73A3H4K2HZZSQU';
+  const testAddress = 'GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI';
 
   group('GenerateDepositInstruction UseCase', () {
     final useCase = GenerateDepositInstruction();

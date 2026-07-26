@@ -163,7 +163,7 @@ bool runExtractRouting(Map input, Map expected) {
   
   if (routingInput.destination.startsWith('C')) {
     try {
-      extractRouting(routingInput);
+      extractRoutingSync(routingInput);
       print('  Expected C-address to throw an error, but it succeeded.');
       return false;
     } catch (e) {
@@ -173,7 +173,7 @@ bool runExtractRouting(Map input, Map expected) {
 
   RoutingResult result;
   try {
-    result = extractRouting(routingInput);
+    result = extractRoutingSync(routingInput);
   } catch (e) {
     if (expected.containsKey('expected_error')) return true;
     print('  Unexpected exception: $e');

@@ -18,20 +18,38 @@ class AnalyzeAddress {
     }
 
     // 2. Perform deep routing extraction
-    final result = extractRouting(RoutingInput(
-      destination: address,
-      memoType: memoType ?? 'none',
-      memoValue: memoValue,
-      sourceAccount: sourceAccount,
-    ));
+    RoutingResult? result;
+    final warnings = <RoutingWarning>[];
+    DestinationError? error;
+
+    try {
+      result = extractRoutingSync(RoutingInput(
+        destination: address,
+        memoType: memoType ?? 'none',
+        memoValue: memoValue,
+        sourceAccount: sourceAccount,
+      ));
+      warnings.addAll(result.warnings);
+      error = result.destinationError;
+    } catch (e) {
+      if (kind == 'C') {
+        warnings.add(const RoutingWarning(
+          code: 'INVALID_DESTINATION',
+          severity: 'error',
+          message: 'Smart contracts (C-addresses) cannot be used as payment destinations.',
+        ));
+      } else {
+        error = DestinationError(code: 'INVALID_ADDRESS', message: e.toString());
+      }
+    }
 
     return AddressAnalysis(
       addressKind: kind,
-      destinationBaseAccount: result.destinationBaseAccount ?? 'N/A',
-      routingId: result.id,
-      routingSource: result.source,
-      warnings: result.warnings,
-      error: result.destinationError,
+      destinationBaseAccount: result?.destinationBaseAccount ?? 'N/A',
+      routingId: result?.id,
+      routingSource: result?.source ?? RoutingSource.none,
+      warnings: warnings,
+      error: error,
     );
   }
 }

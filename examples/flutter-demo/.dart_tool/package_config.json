@@ -111,7 +111,7 @@
     },
     {
       "name": "flutter",
-      "rootUri": "file:///C:/Users/TCE%20HUB/fvm/versions/3.35.7/packages/flutter",
+      "rootUri": "file:///C:/Users/TCE%20HUB/fvm/default/packages/flutter",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -129,7 +129,7 @@
     },
     {
       "name": "flutter_test",
-      "rootUri": "file:///C:/Users/TCE%20HUB/fvm/versions/3.35.7/packages/flutter_test",
+      "rootUri": "file:///C:/Users/TCE%20HUB/fvm/default/packages/flutter_test",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -309,7 +309,7 @@
     },
     {
       "name": "sky_engine",
-      "rootUri": "file:///C:/Users/TCE%20HUB/fvm/versions/3.35.7/bin/cache/pkg/sky_engine",
+      "rootUri": "file:///C:/Users/TCE%20HUB/fvm/default/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -339,7 +339,7 @@
     },
     {
       "name": "stellar_address_kit",
-      "rootUri": "file:///C:/Users/TCE%20HUB/AppData/Local/Pub/Cache/hosted/pub.dev/stellar_address_kit-1.0.1",
+      "rootUri": "../../../packages/core-dart",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -442,7 +442,7 @@
   ],
   "generator": "pub",
   "generatorVersion": "3.9.2",
-  "flutterRoot": "file:///C:/Users/TCE%20HUB/fvm/versions/3.35.7",
+  "flutterRoot": "file:///C:/Users/TCE%20HUB/fvm/default",
   "flutterVersion": "3.35.7",
   "pubCache": "file:///C:/Users/TCE%20HUB/AppData/Local/Pub/Cache"
 }
