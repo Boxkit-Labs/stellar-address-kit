@@ -1,11 +1,8 @@
-#!/usr/bin/env python
-"""Django's command-line utility for administrative tasks."""
 import os
 import sys
 
 
-def main() -> None:
-    """Run administrative tasks."""
+def main():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "anchor_router.settings")
     try:
         from django.core.management import execute_from_command_line

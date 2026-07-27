@@ -8,6 +8,3 @@ license = "MIT"
 [lib]
 name = "prism_core"
 path = "src/lib.rs"
-
-[dependencies]
-# No external dependencies – pure-Rust implementation mirrors the spec.
