@@ -1,0 +1,28 @@
+name: Fuzz
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  fuzz:
+    name: Run rust-address-fuzzer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run Fuzzer
+        run: |
+          cd examples/rust-address-fuzzer
+          cargo run --release -- --random 100000 --max-iterations 100000
+
+      - name: Upload Reproducer
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzzer-reproducer
+          path: examples/rust-address-fuzzer/reproducer.txt
