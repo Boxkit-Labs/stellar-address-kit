@@ -195,15 +195,16 @@ mod tests {
 
     #[test]
     fn invalid_base32_character() {
+        // 56-char address with invalid base32 char '1' (0 and 1 are not valid base32)
         assert!(matches!(
-            parse("G0HJJJKMOKYE4RVPZEWZTKH5FVI4PA3VL7GK2LFNUBSGBV3PR5T4Q"),
+            parse("GA1CUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI"),
             Err(ParseError::InvalidBase32 { .. })
         ));
     }
 
     #[test]
     fn valid_g_address_parses() {
-        let result = parse("GAHJJJKMOKYE4RVPZEWZTKH5FVI4PA3VL7GK2LFNUBSGBV3PR5T4Q");
+        let result = parse("GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI");
         assert!(result.is_ok());
         let parsed = result.unwrap();
         assert_eq!(parsed.kind(), AddressKind::G);
@@ -213,8 +214,8 @@ mod tests {
 
     #[test]
     fn lowercase_normalised_correctly() {
-        let r_lower = parse("gahjjjkmokye4rvpzewztkh5fvi4pa3vl7gk2lfnubsgbv3pr5t4q");
-        let r_upper = parse("GAHJJJKMOKYE4RVPZEWZTKH5FVI4PA3VL7GK2LFNUBSGBV3PR5T4Q");
+        let r_lower = parse("gaycuyt553c5lhve2xpw5gmejt4bxgm7ahmjwlapzp53kjo7eiqadrsi");
+        let r_upper = parse("GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI");
         assert_eq!(r_lower.is_ok(), r_upper.is_ok());
     }
 

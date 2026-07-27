@@ -1,3 +1,4 @@
+mod mutators;
 mod parse;
 
 use std::io::{self, BufRead};
@@ -128,7 +129,7 @@ fn random_string(rng: &mut StdRng) -> String {
             _ => 'C',
         };
         let target_len: usize = if prefix == 'M' { 69 } else { 56 };
-        let len = target_len.saturating_add_signed(rng.gen_range(-4i64..=4));
+        let len = target_len.saturating_add_signed(rng.gen_range(-4isize..=4));
         let body: String = (0..len.saturating_sub(1))
             .map(|_| STRKEY_ALPHABET[rng.gen_range(0..STRKEY_ALPHABET.len())] as char)
             .collect();
