@@ -1,9 +1,11 @@
+mod generate;
 mod parse;
 
 use std::io::{self, BufRead};
 use std::path::PathBuf;
 
 use clap::Parser as ClapParser;
+use prism_core::address::AddressKind;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
@@ -74,8 +76,21 @@ fn main() {
 
 fn run_random(rng: &mut StdRng, n: usize, verbose: bool) -> Stats {
     let mut stats = Stats::default();
-    for _ in 0..n {
-        fuzz_one(&random_string(rng), verbose, &mut stats);
+    for i in 0..n {
+        // Every 4th input is a valid seed address so the fuzzer exercises the
+        // boundary of validity rather than spending all its budget on obvious
+        // garbage.  The other 3 out of 4 are random strings as before.
+        let input = if i % 4 == 0 {
+            let kind = match i % 12 {
+                0 => AddressKind::G,
+                4 => AddressKind::M,
+                _ => AddressKind::C,
+            };
+            generate::random_valid_address(kind, rng)
+        } else {
+            random_string(rng)
+        };
+        fuzz_one(&input, verbose, &mut stats);
     }
     stats
 }
@@ -128,7 +143,7 @@ fn random_string(rng: &mut StdRng) -> String {
             _ => 'C',
         };
         let target_len: usize = if prefix == 'M' { 69 } else { 56 };
-        let len = target_len.saturating_add_signed(rng.gen_range(-4i64..=4));
+        let len = target_len.saturating_add_signed(rng.gen_range(-4isize..=4));
         let body: String = (0..len.saturating_sub(1))
             .map(|_| STRKEY_ALPHABET[rng.gen_range(0..STRKEY_ALPHABET.len())] as char)
             .collect();

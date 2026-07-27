@@ -11,7 +11,8 @@ mod tests {
 
     #[test]
     fn parses_valid_g_address() {
-        let result = parse("GAHJJJKMOKYE4RVPZEWZTKH5FVI4PA3VL7GK2LFNUBSGBV3PR5T4Q");
+        // All-zero ed25519 key — a correctly checksummed 56-char G address.
+        let result = parse("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF");
         assert!(result.is_ok());
         assert_eq!(result.unwrap().kind(), prism_core::address::AddressKind::G);
     }
