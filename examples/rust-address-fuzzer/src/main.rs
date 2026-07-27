@@ -11,9 +11,8 @@
 //! | `--seed <U64>` | Fix the PRNG seed for reproducible runs (default: random). |
 //! | `--verbose` | Print each result instead of only failures / panics. |
 //!
-//! The process exits with code 0 if no panics were found.  Because the fuzzer
-//! catches `Err` variants gracefully (they are expected for bad input), only
-//! a genuine panic in prism-core will be surfaced as a non-zero exit.
+//! The process exits with code 0 if no panics or findings were recorded.
+
 
 mod parse;
 
@@ -155,15 +154,9 @@ fn run_stdin(verbose: bool) -> Stats {
 // ---------------------------------------------------------------------------
 
 /// Call the real parser and record the outcome in `stats`.
-///
-/// Any panic propagates upward and will terminate the process with a non-zero
-/// exit code – which is exactly what we want: it means we found a parser bug.
 fn fuzz_one(input: &str, verbose: bool, stats: &mut Stats) {
     stats.total += 1;
 
-    // We intentionally do NOT use `catch_unwind` here: a panic in prism-core
-    // should crash the fuzzer so that the caller (CI, cargo-fuzz) captures the
-    // failing input for triage.
     let result = parse::parse(input);
 
     match result {
