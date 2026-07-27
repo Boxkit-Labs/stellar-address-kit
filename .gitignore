@@ -1,3 +1,59 @@
+# ─── Node / pnpm ────────────────────────────────────────────────────────────
 node_modules/
+dist/
+.pnpm-store/
+*.tsbuildinfo
+
+# ─── Python ──────────────────────────────────────────────────────────────────
 __pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Django runtime artefacts
+db.sqlite3
+*.sqlite3
+staticfiles/
+mediafiles/
+
+# Distribution / packaging
+*.egg-info/
+*.egg
+dist/
 build/
+.eggs/
+pip-wheel-metadata/
+*.whl
+
+# mypy / pyright / ruff caches
+.mypy_cache/
+.ruff_cache/
+.pytype/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ─── Rust ────────────────────────────────────────────────────────────────────
+target/
+Cargo.lock
+
+# cargo-fuzz corpus & artefacts
+fuzz/corpus/
+fuzz/artifacts/
+
+# ─── Editors & OS ────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.user
+.DS_Store
+Thumbs.db
