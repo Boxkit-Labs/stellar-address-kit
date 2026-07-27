@@ -1,0 +1,43 @@
+name: ci-rust
+
+on:
+  pull_request:
+    paths:
+      - "examples/prism-core/**"
+      - "examples/rust-address-fuzzer/**"
+      - "spec/vectors.json"
+      - ".github/workflows/ci-rust.yml"
+
+concurrency:
+  group: ci-rust-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Rust tests & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache: false
+
+      - name: Test prism-core (lib)
+        run: cargo test -p prism-core
+
+      - name: Test rust-address-fuzzer
+        run: cargo test -p rust-address-fuzzer
+
+      - name: Build prism-diff binary
+        run: cargo build -p prism-core --features diff --bin prism-diff
+
+      - name: Run prism-diff smoke test (1k random inputs)
+        run: cargo run -p prism-core --features diff --bin prism-diff -- --random 1000 --seed 42
