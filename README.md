@@ -65,6 +65,40 @@ console.log(result.routingId); // "123"
 - **Warning System**: Discriminated unions (TS) or structured objects (Go/Dart) to catch edge cases like numeric `MEMO_TEXT`.
 - **Zero Dependencies**: Core logic is lightweight and has zero external dependencies beyond standard library features.
 
+## Fuzzing
+
+The Rust parser (`prism-core`) supports coverage-guided fuzzing via `cargo-fuzz`.
+
+### Prerequisites
+
+```bash
+rustup toolchain install nightly
+cargo install cargo-fuzz
+```
+
+### Running
+
+```bash
+# Coverage-guided fuzzing with libFuzzer
+cargo +nightly fuzz run parse
+
+# Limit to N iterations
+cargo +nightly fuzz run parse -- -max_total_time=60
+
+# Run with a specific seed corpus
+cargo +nightly fuzz run parse fuzz/corpus/parse/
+```
+
+Corpus files in `fuzz/corpus/parse/` are auto-generated from the spec vector suite. Invalid inputs are also useful — the fuzzer will mutate valid seeds to exercise edge cases.
+
+### Crash Findings
+
+If the fuzzer catches a panic, findings are written to `fuzz/artifacts/parse/`. Each artifact file contains the exact input that triggered the crash. Reproduce with:
+
+```bash
+cargo +nightly fuzz run parse fuzz/artifacts/parse/crash-<hash>
+```
+
 ## Maintainers
 
 - **codeZeus** - [GitHub](https://github.com/codeZe-us)
