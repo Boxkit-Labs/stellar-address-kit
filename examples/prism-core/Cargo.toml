@@ -1,0 +1,13 @@
+[package]
+name = "prism-core"
+version = "0.1.0"
+edition = "2021"
+description = "Rust implementation of the stellar-address-kit Stellar address parser"
+license = "MIT"
+
+[lib]
+name = "prism_core"
+path = "src/lib.rs"
+
+[dependencies]
+# No external dependencies – pure-Rust implementation mirrors the spec.

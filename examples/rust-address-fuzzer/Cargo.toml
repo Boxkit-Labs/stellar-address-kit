@@ -1,0 +1,32 @@
+[package]
+name = "rust-address-fuzzer"
+version = "0.1.0"
+edition = "2021"
+description = "Fuzz tester for the prism-core Stellar address parser"
+license = "MIT"
+
+[[bin]]
+name = "rust-address-fuzzer"
+path = "src/main.rs"
+
+[dependencies]
+# prism-core – the real Stellar address parser this fuzzer exercises.
+# Using a path dependency so the fuzzer always tests the local copy.
+# To pin a published crate instead, replace with:
+#   prism-core = { version = "0.1", registry = "crates-io" }
+prism-core = { path = "../prism-core" }
+
+# Input generation
+arbitrary = { version = "1", features = ["derive"] }
+rand = "0.8"
+
+# CLI argument parsing
+clap = { version = "4", features = ["derive"] }
+
+[dev-dependencies]
+# Nothing extra needed – the binary crate IS the fuzzer entry point.
+
+[profile.release]
+# Enable link-time optimisation for faster fuzzing throughput
+lto = true
+codegen-units = 1

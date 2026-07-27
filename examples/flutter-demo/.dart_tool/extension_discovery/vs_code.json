@@ -1,1 +1,1 @@
-{"version":2,"entries":[{"package":"stellar_address_kit_demo","rootUri":"../","packageUri":"lib/"}]}
+{"version":2,"entries":[{"package":"stellar_address_kit","rootUri":"../../../packages/core-dart/","packageUri":"lib/"},{"package":"stellar_address_kit_demo","rootUri":"../","packageUri":"lib/"}]}
