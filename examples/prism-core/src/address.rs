@@ -134,16 +134,25 @@ pub fn parse(input: &str) -> Result<Address, ParseError> {
         if payload.len() < 41 {
             return Err(ParseError::InvalidMuxedPayload);
         }
-        let id_bytes: [u8; 8] = payload[1..9].try_into().map_err(|_| ParseError::InvalidMuxedPayload)?;
+        // SEP-0023 MuxedAccount payload layout:
+        //   version_byte || ed25519_pubkey(32) || muxed_id(8, big-endian)
+        let base_g = encode_g_address(&payload[1..33])?;
+        let id_bytes: [u8; 8] = payload[33..41]
+            .try_into()
+            .map_err(|_| ParseError::InvalidMuxedPayload)?;
         let muxed_id = u64::from_be_bytes(id_bytes);
-        let base_g = encode_g_address(&payload[9..41])?;
-        return Ok(Address { kind, raw: upper, base_g: Some(base_g), muxed_id: Some(muxed_id) });
+        return Ok(Address {
+            kind,
+            raw: upper,
+            base_g: Some(base_g),
+            muxed_id: Some(muxed_id),
+        });
     }
 
     Ok(Address { kind, raw: upper, base_g: None, muxed_id: None })
 }
 
-fn encode_g_address(key: &[u8]) -> Result<String, ParseError> {
+pub fn encode_g_address(key: &[u8]) -> Result<String, ParseError> {
     if key.len() != 32 {
         return Err(ParseError::InvalidMuxedPayload);
     }
@@ -195,16 +204,18 @@ mod tests {
 
     #[test]
     fn invalid_base32_character() {
+        // 56-char G-prefix string with a '0' at position 1.
         assert!(matches!(
-            parse("G0HJJJKMOKYE4RVPZEWZTKH5FVI4PA3VL7GK2LFNUBSGBV3PR5T4Q"),
+            parse("G0HJJJKMOKYE4RVPZEWZTKH5FVI4PA3VL7GK2LFNUBSGBV3PR5T4QABC"),
             Err(ParseError::InvalidBase32 { .. })
         ));
     }
 
     #[test]
     fn valid_g_address_parses() {
-        let result = parse("GAHJJJKMOKYE4RVPZEWZTKH5FVI4PA3VL7GK2LFNUBSGBV3PR5T4Q");
-        assert!(result.is_ok());
+        // Verified against the stellar-strkey reference decoder (0.0.18).
+        let result = parse("GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI");
+        assert!(result.is_ok(), "unexpected error: {result:?}");
         let parsed = result.unwrap();
         assert_eq!(parsed.kind(), AddressKind::G);
         assert_eq!(parsed.base_g(), None);

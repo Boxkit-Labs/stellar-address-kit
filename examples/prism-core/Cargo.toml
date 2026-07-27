@@ -2,9 +2,24 @@
 name = "prism-core"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.87.0"
 description = "Rust implementation of the stellar-address-kit Stellar address parser"
 license = "MIT"
 
 [lib]
 name = "prism_core"
 path = "src/lib.rs"
+
+[[bin]]
+name = "prism-diff"
+path = "src/diff.rs"
+required-features = ["diff"]
+
+[features]
+default = []
+diff = ["dep:stellar-strkey", "dep:clap", "dep:rand"]
+
+[dependencies]
+stellar-strkey = { version = "0.0.18", optional = true }
+clap = { version = "4", features = ["derive"], optional = true }
+rand = { version = "0.8", optional = true }

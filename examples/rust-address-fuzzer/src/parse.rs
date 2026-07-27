@@ -11,8 +11,8 @@ mod tests {
 
     #[test]
     fn parses_valid_g_address() {
-        let result = parse("GAHJJJKMOKYE4RVPZEWZTKH5FVI4PA3VL7GK2LFNUBSGBV3PR5T4Q");
-        assert!(result.is_ok());
+        let result = parse("GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI");
+        assert!(result.is_ok(), "unexpected error: {result:?}");
         assert_eq!(result.unwrap().kind(), prism_core::address::AddressKind::G);
     }
 
