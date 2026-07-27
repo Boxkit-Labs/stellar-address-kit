@@ -1,4 +1,5 @@
 mod parse;
+mod report;
 
 use std::io::{self, BufRead};
 use std::path::PathBuf;
@@ -26,6 +27,10 @@ struct Cli {
     #[arg(long, value_name = "U64")]
     seed: Option<u64>,
 
+    /// Stop fuzzing after this many iterations
+    #[arg(long, value_name = "N")]
+    max_iterations: Option<usize>,
+
     /// Print every result, not just failures
     #[arg(long, short)]
     verbose: bool,
@@ -37,6 +42,7 @@ struct Stats {
     ok: usize,
     err: usize,
     panics: usize,
+    report: report::Report,
 }
 
 fn main() {
@@ -54,20 +60,26 @@ fn main() {
         eprintln!("PRNG seed: {seed}");
     }
 
-    let stats = if let Some(n) = cli.random {
-        run_random(&mut rng, n, cli.verbose)
+    let mut stats = if let Some(n) = cli.random {
+        let max = cli.max_iterations.unwrap_or(n);
+        run_random(&mut rng, max.min(n), cli.verbose)
     } else if let Some(path) = cli.corpus {
-        run_corpus(&path, cli.verbose)
+        run_corpus(&path, cli.verbose, cli.max_iterations)
     } else {
-        run_stdin(cli.verbose)
+        run_stdin(cli.verbose, cli.max_iterations)
     };
 
+    stats.report.inputs_run = stats.total;
+    stats.report.findings_count = stats.panics; // In the future, logic errors would also go here.
+    
     eprintln!(
-        "Done – {} inputs | {} ok | {} err | {} panics",
-        stats.total, stats.ok, stats.err, stats.panics
+        "Done – {} inputs | {} ok | {} err | {} findings",
+        stats.total, stats.ok, stats.err, stats.report.findings_count
     );
 
-    if stats.panics > 0 {
+    stats.report.print_json();
+
+    if stats.report.findings_count > 0 || stats.report.divergences > 0 {
         std::process::exit(1);
     }
 }
@@ -80,21 +92,27 @@ fn run_random(rng: &mut StdRng, n: usize, verbose: bool) -> Stats {
     stats
 }
 
-fn run_corpus(path: &PathBuf, verbose: bool) -> Stats {
+fn run_corpus(path: &PathBuf, verbose: bool, max_iters: Option<usize>) -> Stats {
     let file = std::fs::File::open(path).unwrap_or_else(|e| {
         eprintln!("error: cannot open corpus file {}: {e}", path.display());
         std::process::exit(2);
     });
     let mut stats = Stats::default();
-    for line in io::BufReader::new(file).lines() {
+    for (i, line) in io::BufReader::new(file).lines().enumerate() {
+        if let Some(m) = max_iters {
+            if i >= m { break; }
+        }
         fuzz_one(&line.unwrap_or_default(), verbose, &mut stats);
     }
     stats
 }
 
-fn run_stdin(verbose: bool) -> Stats {
+fn run_stdin(verbose: bool, max_iters: Option<usize>) -> Stats {
     let mut stats = Stats::default();
-    for line in io::stdin().lock().lines() {
+    for (i, line) in io::stdin().lock().lines().enumerate() {
+        if let Some(m) = max_iters {
+            if i >= m { break; }
+        }
         fuzz_one(&line.unwrap_or_default(), verbose, &mut stats);
     }
     stats
@@ -102,18 +120,26 @@ fn run_stdin(verbose: bool) -> Stats {
 
 fn fuzz_one(input: &str, verbose: bool, stats: &mut Stats) {
     stats.total += 1;
-    match parse::parse(input) {
-        Ok(addr) => {
+    let input_owned = input.to_owned();
+    let res = std::panic::catch_unwind(|| parse::parse(&input_owned));
+    
+    match res {
+        Ok(Ok(addr)) => {
             stats.ok += 1;
             if verbose {
                 eprintln!("OK   {:?}  ← {input:?}", addr.kind());
             }
         }
-        Err(e) => {
+        Ok(Err(e)) => {
             stats.err += 1;
             if verbose {
                 eprintln!("ERR  {e:?}  ← {input:?}");
             }
+        }
+        Err(_) => {
+            stats.panics += 1;
+            eprintln!("PANIC  ← {input:?}");
+            let _ = std::fs::write("reproducer.txt", input);
         }
     }
 }
