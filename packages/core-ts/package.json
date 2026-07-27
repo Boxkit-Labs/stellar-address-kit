@@ -5,11 +5,14 @@
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "bin": {
+    "stellar-route": "./dist/cli.js"
+  },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "build": "tsup src/index.ts src/cli.ts --format cjs,esm --dts",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/**/*.ts"
@@ -24,5 +27,8 @@
     "tsup": "^8.0.1",
     "typescript": "^5.3.3",
     "vitest": "^1.2.1"
+  },
+  "dependencies": {
+    "commander": "^15.0.0"
   }
 }
