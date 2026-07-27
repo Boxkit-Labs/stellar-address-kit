@@ -12,7 +12,7 @@ mod tests {
     #[test]
     fn parses_valid_g_address() {
         let result = parse("GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI");
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "unexpected error: {result:?}");
         assert_eq!(result.unwrap().kind(), prism_core::address::AddressKind::G);
     }
 
