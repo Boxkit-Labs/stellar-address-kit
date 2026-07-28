@@ -224,8 +224,8 @@ mod tests {
 
     #[test]
     fn lowercase_normalised_correctly() {
-        let r_lower = parse("gahjjjkmokye4rvpzewztkh5fvi4pa3vl7gk2lfnubsgbv3pr5t4q");
-        let r_upper = parse("GAHJJJKMOKYE4RVPZEWZTKH5FVI4PA3VL7GK2LFNUBSGBV3PR5T4Q");
+        let r_lower = parse("gaycuyt553c5lhve2xpw5gmejt4bxgm7ahmjwlapzp53kjo7eiqadrsi");
+        let r_upper = parse("GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI");
         assert_eq!(r_lower.is_ok(), r_upper.is_ok());
     }
 
