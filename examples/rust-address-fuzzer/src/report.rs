@@ -1,3 +1,4 @@
+#[derive(Default)]
 pub struct Report {
     pub inputs_run: usize,
     pub findings_count: usize,
