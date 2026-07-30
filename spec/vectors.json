@@ -73,10 +73,7 @@
         "baseG": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
         "id": "0"
       },
-      "tags": [
-        "positive",
-        "edge"
-      ]
+      "tags": ["positive", "edge"]
     },
     {
       "module": "muxed_decode",
@@ -89,10 +86,7 @@
         "baseG": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
         "id": "1"
       },
-      "tags": [
-        "positive",
-        "edge"
-      ]
+      "tags": ["positive", "edge"]
     },
     {
       "module": "muxed_decode",
@@ -105,11 +99,7 @@
         "baseG": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
         "id": "9007199254740992"
       },
-      "tags": [
-        "positive",
-        "edge",
-        "interop"
-      ]
+      "tags": ["positive", "edge", "interop"]
     },
     {
       "module": "muxed_decode",
@@ -122,11 +112,7 @@
         "baseG": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
         "id": "9007199254740993"
       },
-      "tags": [
-        "positive",
-        "edge",
-        "interop"
-      ]
+      "tags": ["positive", "edge", "interop"]
     },
     {
       "module": "muxed_decode",
@@ -139,11 +125,7 @@
         "baseG": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
         "id": "18446744073709551615"
       },
-      "tags": [
-        "positive",
-        "edge",
-        "interop"
-      ]
+      "tags": ["positive", "edge", "interop"]
     },
     {
       "module": "muxed_decode",
@@ -154,10 +136,7 @@
       "expected": {
         "expected_error": "invalid encoded string"
       },
-      "tags": [
-        "negative",
-        "edge"
-      ]
+      "tags": ["negative", "edge"]
     },
     {
       "module": "detect",
@@ -180,10 +159,7 @@
           }
         ]
       },
-      "tags": [
-        "negative",
-        "edge"
-      ]
+      "tags": ["negative", "edge"]
     },
     {
       "module": "extract_routing",
@@ -198,10 +174,7 @@
         "routingSource": "muxed",
         "warnings": []
       },
-      "tags": [
-        "positive",
-        "interop"
-      ]
+      "tags": ["positive", "interop"]
     },
     {
       "module": "extract_routing",
@@ -225,9 +198,7 @@
           }
         ]
       },
-      "tags": [
-        "negative"
-      ]
+      "tags": ["negative"]
     },
     {
       "module": "extract_routing",
@@ -243,9 +214,7 @@
         "routingSource": "memo",
         "warnings": []
       },
-      "tags": [
-        "positive"
-      ]
+      "tags": ["positive"]
     },
     {
       "module": "extract_routing",
@@ -261,10 +230,7 @@
         "routingSource": "memo",
         "warnings": []
       },
-      "tags": [
-        "positive",
-        "edge"
-      ]
+      "tags": ["positive", "edge"]
     },
     {
       "module": "extract_routing",
@@ -280,9 +246,7 @@
         "routingSource": "memo",
         "warnings": []
       },
-      "tags": [
-        "positive"
-      ]
+      "tags": ["positive"]
     },
     {
       "module": "extract_routing",
@@ -308,10 +272,64 @@
           }
         ]
       },
-      "tags": [
-        "negative",
-        "edge"
-      ]
+      "tags": ["negative", "edge"]
+    },
+    {
+      "module": "detect",
+      "description": "non-base32 digit '0' injected into address must be rejected",
+      "input": {
+        "address": "GA0CUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI"
+      },
+      "expected": {
+        "kind": null,
+        "address": null,
+        "warnings": [
+          {
+            "code": "INVALID_STRKEY",
+            "severity": "error",
+            "message": "address contains characters outside the base32 alphabet"
+          }
+        ]
+      },
+      "tags": ["negative", "edge"]
+    },
+    {
+      "module": "detect",
+      "description": "punctuation injected into address must be rejected",
+      "input": {
+        "address": "GA!CUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI"
+      },
+      "expected": {
+        "kind": null,
+        "address": null,
+        "warnings": [
+          {
+            "code": "INVALID_STRKEY",
+            "severity": "error",
+            "message": "address contains characters outside the base32 alphabet"
+          }
+        ]
+      },
+      "tags": ["negative", "edge"]
+    },
+    {
+      "module": "detect",
+      "description": "embedded null byte must be rejected without crashing or truncating",
+      "input": {
+        "address": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRS\u0000"
+      },
+      "expected": {
+        "kind": null,
+        "address": null,
+        "warnings": [
+          {
+            "code": "INVALID_STRKEY",
+            "severity": "error",
+            "message": "address contains characters outside the base32 alphabet"
+          }
+        ]
+      },
+      "tags": ["negative", "edge"]
     }
   ]
 }
