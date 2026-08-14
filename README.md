@@ -65,10 +65,6 @@ console.log(result.routingId); // "123"
 - **Warning System**: Discriminated unions (TS) or structured objects (Go/Dart) to catch edge cases like numeric `MEMO_TEXT`.
 - **Zero Dependencies**: Core logic is lightweight and has zero external dependencies beyond standard library features.
 
-## Maintainers
-
-- **codeZeus** - [GitHub](https://github.com/codeZe-us)
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
