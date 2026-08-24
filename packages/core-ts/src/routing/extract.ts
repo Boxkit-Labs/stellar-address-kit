@@ -44,6 +44,17 @@ function assertRoutableAddress(destination: string): void {
  * @returns A result containing the base account, routing ID, source, and any warnings.
  */
 export function extractRouting(input: RoutingInput): RoutingResult {
+  // Strip invisible/control characters and trim (copy-paste from explorers/PDFs).
+  {
+    const before = input.destination;
+    const after = String(before)
+      .replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200D\uFEFF]/g, "")
+      .trim();
+    if (after !== before) {
+      console.info("SANITIZED_HIDDEN_CHARS", { before, after });
+      input = { ...input, destination: after };
+    }
+  }
   assertRoutableAddress(input.destination);
 
   let parsed;

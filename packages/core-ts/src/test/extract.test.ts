@@ -281,3 +281,11 @@ describe("multi-warning: NON_CANONICAL_ROUTING_ID + MEMO_ID_INVALID_FORMAT", () 
     }
   });
 });
+
+describe("hidden character sanitization", () => {
+  it("strips zero-width spaces from destination before routing", () => {
+    const dirty = "\u200B" + G_ADDRESS + "\u200B";
+    const result = extractRouting(input(dirty));
+    expect(result.destinationBaseAccount).toBe(G_ADDRESS);
+  });
+});
