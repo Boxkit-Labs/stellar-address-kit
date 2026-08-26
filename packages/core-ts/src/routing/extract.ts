@@ -1,8 +1,22 @@
 import { RoutingInput, RoutingResult } from "./types";
-import { Warning } from "../address/types";
+import { Warning, WarningSeverity } from "../address/types";
 import { parse } from "../address/parse";
 import { AddressParseError } from "../address/errors";
 import { normalizeMemoTextId } from "./memo";
+
+const SEVERITY_ORDER: Record<WarningSeverity, number> = {
+  info: 0,
+  warn: 1,
+  error: 2,
+};
+
+function filterBySeverity(
+  warnings: Warning[],
+  minSeverity: WarningSeverity
+): Warning[] {
+  const threshold = SEVERITY_ORDER[minSeverity];
+  return warnings.filter((w) => SEVERITY_ORDER[w.severity] >= threshold);
+}
 
 export class ExtractRoutingError extends Error {
   constructor(message: string) {
@@ -45,6 +59,8 @@ function assertRoutableAddress(destination: string): void {
  */
 export function extractRouting(input: RoutingInput): RoutingResult {
   assertRoutableAddress(input.destination);
+
+  const minSeverity = input.minSeverityLevel ?? "info";
 
   let parsed;
   try {
@@ -90,7 +106,7 @@ export function extractRouting(input: RoutingInput): RoutingResult {
       destinationBaseAccount: null,
       routingId: null,
       routingSource: "none",
-      warnings,
+      warnings: filterBySeverity(warnings, minSeverity),
     };
   }
 
@@ -120,7 +136,7 @@ export function extractRouting(input: RoutingInput): RoutingResult {
       destinationBaseAccount: parsed.baseG,
       routingId: parsed.muxedId,
       routingSource: "muxed",
-      warnings,
+      warnings: filterBySeverity(warnings, minSeverity),
     };
   }
 
@@ -178,6 +194,6 @@ export function extractRouting(input: RoutingInput): RoutingResult {
     destinationBaseAccount: parsed.address,
     routingId,
     routingSource,
-    warnings,
+    warnings: filterBySeverity(warnings, minSeverity),
   };
 }
