@@ -11,5 +11,7 @@ export 'src/muxed/decoded_muxed_address.dart';
 export 'src/routing/extract.dart';
 export 'src/routing/routing_result.dart';
 export 'src/routing/memo.dart';
+export 'src/routing/safe_routing_id.dart';
+export 'src/util/web_platform.dart';
 export 'src/muxed/muxed_address.dart';
 export 'src/exceptions.dart';

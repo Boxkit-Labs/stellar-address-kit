@@ -15,7 +15,10 @@ import 'encode.dart';
 /// `Number`, or explicitly keep it as `BigInt` to prevent precision loss.
 ///
 /// If you need to serialize IDs for web usage, treat them as strings and
-/// apply appropriate conversion logic to maintain full 64-bit range correctness.
+/// apply appropriate conversion logic to maintain full 64-bit range
+/// correctness. The [SafeRoutingId] wrapper does exactly this: it parses,
+/// validates, and serializes routing IDs as exact decimal strings (see also
+/// `isWebJsRuntime` for the compile-time web probe).
 ///
 /// For Flutter web guidance and BigInt caveats, see
 /// [flutter-web-bigint.md](../../../../docs/guides/flutter-web-bigint.md).

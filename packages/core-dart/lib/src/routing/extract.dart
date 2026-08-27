@@ -3,10 +3,18 @@ import '../address/parse.dart';
 import '../muxed/decode.dart';
 import 'routing_result.dart';
 import 'memo.dart';
+import 'safe_routing_id.dart';
 
 /// Extracts deposit routing information from a Stellar payment input.
 /// Following the standard priority policy, M-address identifiers take
 /// precedence over any provided memo.
+///
+/// Web safety: routing IDs are resolved through [SafeRoutingId], which
+/// parses the canonical decimal **string** exactly and never converts
+/// through `int`/JS `Number`. Combined with the `BigInt`-backed
+/// [RoutingResult.id], [RoutingResult.idString], and
+/// [RoutingResult.safeId] accessors, MEMO_IDs and muxed IDs up to the
+/// uint64 ceiling survive Flutter Web without truncation.
 ///
 /// This is the synchronous variant for pure string parsing.
 /// For future compatibility with async network checks (Federation, SEP-0029),
@@ -84,7 +92,7 @@ RoutingResult extractRoutingSync(RoutingInput input) {
     if (input.memoType == 'id') {
       final norm = normalizeMemoId(input.memoValue ?? '');
       if (norm.normalized != null) {
-        routingId = BigInt.parse(norm.normalized!);
+        routingId = SafeRoutingId.tryParse(norm.normalized!)?.toBigInt;
         routingSource = RoutingSource.memo;
       } else {
         warnings.add(
@@ -105,7 +113,7 @@ RoutingResult extractRoutingSync(RoutingInput input) {
     } else if (input.memoType == 'text' && input.memoValue != null) {
       final norm = normalizeMemoTextId(input.memoValue!);
       if (norm.normalized != null) {
-        routingId = BigInt.parse(norm.normalized!);
+        routingId = SafeRoutingId.tryParse(norm.normalized!)?.toBigInt;
         routingSource = RoutingSource.memo;
       } else {
         warnings.add(
@@ -155,7 +163,7 @@ RoutingResult extractRoutingSync(RoutingInput input) {
   if (input.memoType == 'id') {
     final norm = normalizeMemoId(input.memoValue ?? '');
     if (norm.normalized != null) {
-      routingId = BigInt.parse(norm.normalized!);
+      routingId = SafeRoutingId.tryParse(norm.normalized!)?.toBigInt;
       routingSource = RoutingSource.memo;
     } else {
       warnings.add(
@@ -176,7 +184,7 @@ RoutingResult extractRoutingSync(RoutingInput input) {
   } else if (input.memoType == 'text' && input.memoValue != null) {
     final norm = normalizeMemoTextId(input.memoValue!);
     if (norm.normalized != null) {
-      routingId = BigInt.parse(norm.normalized!);
+      routingId = SafeRoutingId.tryParse(norm.normalized!)?.toBigInt;
       routingSource = RoutingSource.memo;
     } else {
       warnings.add(

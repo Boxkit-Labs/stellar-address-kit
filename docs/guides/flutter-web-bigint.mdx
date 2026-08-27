@@ -6,7 +6,7 @@ description: "Avoiding precision loss in the browser."
 Flutter Web compiles to JavaScript, which means it shares the same 64-bit float limitations as any other JS application.
 
 ## The Problem
-If you parse a large Memo ID (near `18,446,744,073,709,551,615`) as an `int` in Dart when running on Web, you will lose precision.
+If you parse a large Memo ID (near `18,446,744,073,709,551,615`) as an `int` in Dart when running on Web, you will lose precision. Dart `int` compiles to a JS `Number`, which is only exact up to `Number.MAX_SAFE_INTEGER` (`9,007,199,254,740,991`). For example, `int.parse('9007199254740993')` silently becomes `9007199254740992` — one unit off, with no error.
 
 ## The Solution
 The Dart package uses `BigInt` internally and returns the `routingId` as a `String`.
@@ -14,3 +14,25 @@ The Dart package uses `BigInt` internally and returns the `routingId` as a `Stri
 <Warning>
   Never convert the `routingId` to an `int` if your app targets Web. Always keep it as a `String` or a `BigInt`.
 </Warning>
+
+## The Built-In Safety Net (v1.1.0+)
+
+The package now ships a dedicated web-safe layer so you do not have to hand-roll these guards:
+
+- **`isWebJsRuntime`** — a compile-time (conditional-import) probe that is `true` only when your app is compiled to JavaScript.
+- **`SafeRoutingId`** — a BigInt-backed wrapper that parses, validates, compares, and serializes 64-bit routing IDs as exact decimal strings. It never routes the value through `int`/JS `Number`, and `fromInt` rejects values above `Number.MAX_SAFE_INTEGER` on web builds instead of propagating a truncated number.
+- **`RoutingResult.idString` / `RoutingResult.safeId`** — web-safe accessors for the resolved routing ID.
+
+```dart
+final id = SafeRoutingId.parse('9007199254740993'); // 2^53 + 1
+id.value;              // '9007199254740993' — exact in the browser
+id.toJson();           // '9007199254740993' — safe to jsonEncode
+id.exceedsJsSafeRange; // true
+```
+
+Browser-only test vectors in `packages/core-dart/test/web_compat/routing_id_web_test.dart` pin the boundary IDs (`2^53 - 1`, `2^53`, `2^53 + 1`, `2^63 - 1`, `2^63`, `2^64 - 1`) through memo extraction, muxed decode, and JSON serialization. Run them with:
+
+```bash
+cd packages/core-dart
+dart test test/web_compat --platform chrome
+```
