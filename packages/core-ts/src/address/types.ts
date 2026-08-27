@@ -1,6 +1,12 @@
 import { ErrorCode } from "./errors";
 export type AddressKind = "G" | "M" | "C";
 
+/**
+ * Severity levels for validation warnings.
+ * Used with `minSeverityLevel` to filter warnings by importance.
+ */
+export type WarningSeverity = "info" | "warn" | "error";
+
 export type WarningCode =
   | "NON_CANONICAL_ADDRESS"
   | "NON_CANONICAL_ROUTING_ID"
