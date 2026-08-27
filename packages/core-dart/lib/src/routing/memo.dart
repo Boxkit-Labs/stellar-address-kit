@@ -1,4 +1,5 @@
 import '../address/codes.dart';
+import 'safe_routing_id.dart';
 
 class NormalizeResult {
   final String? normalized;
@@ -7,13 +8,19 @@ class NormalizeResult {
   NormalizeResult({this.normalized, required this.warnings});
 }
 
-final BigInt uint64Max = BigInt.parse('18446744073709551615');
+final BigInt uint64Max = SafeRoutingId.uint64Max;
 final RegExp digitsOnly = RegExp(r'^\d+$');
 
 /// Strict normalizer for MEMO_ID type.
 /// A MEMO_ID must be a non-empty string of digits parseable as a uint64.
 /// Leading zeros are invalid (except the canonical "0").
 /// Returns null if the value cannot be used as a routing ID.
+///
+/// Web safety: range validation goes through [SafeRoutingId.tryParse],
+/// which works on the decimal string directly (length- and
+/// lexicographic-comparison based) and therefore never coerces the value
+/// through `int`/JS `Number`. Large MEMO_IDs (>
+/// `Number.MAX_SAFE_INTEGER`) are validated exactly in browser contexts.
 NormalizeResult normalizeMemoId(String s) {
   final warnings = <Warning>[];
 
@@ -38,24 +45,14 @@ NormalizeResult normalizeMemoId(String s) {
     );
     // Strip zeros and re-normalize for the returned value
     final stripped = BigInt.parse(s).toString();
-    try {
-      final val = BigInt.parse(stripped);
-      if (val > uint64Max) {
-        return NormalizeResult(normalized: null, warnings: warnings);
-      }
-    } catch (_) {
+    if (SafeRoutingId.tryParseStrict(stripped) == null) {
       return NormalizeResult(normalized: null, warnings: warnings);
     }
     return NormalizeResult(normalized: stripped, warnings: warnings);
   }
 
-  // Validate uint64 range
-  try {
-    final val = BigInt.parse(s);
-    if (val > uint64Max) {
-      return NormalizeResult(normalized: null, warnings: warnings);
-    }
-  } catch (_) {
+  // Validate uint64 range (string-exact; safe on Flutter Web)
+  if (SafeRoutingId.tryParseStrict(s) == null) {
     return NormalizeResult(normalized: null, warnings: warnings);
   }
 
@@ -90,13 +87,9 @@ NormalizeResult normalizeMemoTextId(String s) {
     );
   }
 
-  // Step 5: uint64 max
-  try {
-    final val = BigInt.parse(normalized);
-    if (val > uint64Max) {
-      return NormalizeResult(normalized: null, warnings: warnings);
-    }
-  } catch (_) {
+  // Step 5: uint64 max — validated on the string itself, exactly, so IDs
+  // above JS Number.MAX_SAFE_INTEGER are not truncated on Flutter Web.
+  if (SafeRoutingId.tryParse(normalized) == null) {
     return NormalizeResult(normalized: null, warnings: warnings);
   }
 

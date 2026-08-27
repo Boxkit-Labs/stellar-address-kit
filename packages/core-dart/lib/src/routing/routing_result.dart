@@ -1,3 +1,11 @@
+/// Routing result types with web-safe routing ID accessors.
+///
+/// Exposes the [SafeRoutingId] wrapper so browser contexts (Flutter Web)
+/// never have to push 64-bit routing IDs through a JS `Number`.
+library;
+
+import 'safe_routing_id.dart';
+
 /// Identifies the mechanism used to resolve a routing ID.
 enum RoutingSource {
   /// The routing ID was extracted directly from a Muxed address (M-address).
@@ -116,6 +124,14 @@ class RoutingInput {
 /// Holds the [source] tag indicating how the route was resolved,
 /// an optional numeric [id] extracted from the address or memo,
 /// and any [warnings] emitted during resolution.
+///
+/// ## Flutter Web precision safety
+///
+/// [id] is a [BigInt], which is exact on every Dart target — including
+/// Flutter Web, where plain `int` values compile to JS `Number`s and lose
+/// precision above `2^53 - 1`. In browser contexts, serialize the routing
+/// ID via [idString] or the [safeId] wrapper instead of ever converting it
+/// to `int`/`num`.
 final class RoutingResult {
   /// The mechanism that successfully resolved the routing ID.
   final RoutingSource source;
@@ -139,6 +155,25 @@ final class RoutingResult {
     this.destinationBaseAccount,
     this.destinationError,
   }) : warnings = List.unmodifiable(warnings ?? const []);
+
+  /// The routing ID as an exact, canonical decimal string, or `null` when
+  /// no ID was resolved.
+  ///
+  /// This is the **web-safe** way to consume [id]: strings never pass
+  /// through a JS `Number`, so routing IDs above
+  /// `Number.MAX_SAFE_INTEGER` (`9007199254740991`) — up to the uint64
+  /// ceiling `18446744073709551615` — keep full precision when running in
+  /// a browser context (Flutter Web). Prefer this over `id.toInt()`-style
+  /// conversions, which silently truncate there.
+  String? get idString => id?.toString();
+
+  /// The routing ID wrapped in a [SafeRoutingId], or `null` when no ID was
+  /// resolved.
+  ///
+  /// [SafeRoutingId] is the BigInt-backed wrapper that guarantees the exact
+  /// value survives parsing, comparison, and JSON serialization on all
+  /// platforms, including Flutter Web.
+  SafeRoutingId? get safeId => id == null ? null : SafeRoutingId.fromBigInt(id!);
 
   String toDisplayString() {
     switch (source) {
