@@ -16,7 +16,8 @@ export type WarningCode =
   | "MEMO_TEXT_UNROUTABLE"
   | "MEMO_ID_INVALID_FORMAT"
   | "UNSUPPORTED_MEMO_TYPE"
-  | "INVALID_DESTINATION";
+  | "INVALID_DESTINATION"
+  | "MISSING_REQUIRED_MEMO";
 
 export type Warning =
   | {
@@ -51,8 +52,14 @@ export type Warning =
         | "NON_CANONICAL_ROUTING_ID"
         | "INVALID_DESTINATION"
         | "UNSUPPORTED_MEMO_TYPE"
+        | "MISSING_REQUIRED_MEMO"
       >;
       severity: "info" | "warn" | "error";
+      message: string;
+    }
+  | {
+      code: "MISSING_REQUIRED_MEMO";
+      severity: "error";
       message: string;
     };
 
