@@ -131,7 +131,7 @@ export function extractRoutingFromURI(uriString: string): ExtractRoutingFromURIR
 
   // 6. Extract optional parameters with safe decoding
   const rawParams: SEP7PayParams = {
-    destination: safelyDecode(destination.trim()),
+    destination: safelyDecode(destination.trim()) ?? destination.trim(),
     amount: safelyDecode(params.get("amount")),
     assetCode: safelyDecode(params.get("asset_code")),
     assetIssuer: safelyDecode(params.get("asset_issuer")),

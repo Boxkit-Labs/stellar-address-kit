@@ -37,6 +37,8 @@ __export(index_exports, {
   encodeMuxed: () => encodeMuxed,
   extractRouting: () => extractRouting,
   extractRoutingFromTx: () => extractRoutingFromTx,
+  extractRoutingFromURI: () => extractRoutingFromURI,
+  isSuccessfulURIResult: () => isSuccessfulURIResult,
   normalizeMemoTextId: () => normalizeMemoTextId,
   parse: () => parse,
   routingIdAsBigInt: () => routingIdAsBigInt,
@@ -233,6 +235,15 @@ function normalizeMemoTextId(s) {
 }
 
 // src/routing/extract.ts
+var SEVERITY_ORDER = {
+  info: 0,
+  warn: 1,
+  error: 2
+};
+function filterBySeverity(warnings, minSeverity) {
+  const threshold = SEVERITY_ORDER[minSeverity];
+  return warnings.filter((w) => SEVERITY_ORDER[w.severity] >= threshold);
+}
 var ExtractRoutingError = class _ExtractRoutingError extends Error {
   constructor(message) {
     super(message);
@@ -240,6 +251,16 @@ var ExtractRoutingError = class _ExtractRoutingError extends Error {
     Object.setPrototypeOf(this, _ExtractRoutingError.prototype);
   }
 };
+function sanitizeDestination(destination) {
+  if (!destination || typeof destination !== "string") {
+    return { sanitized: destination, wasSanitized: false };
+  }
+  const sanitized = destination.replace(/[\p{C}\s]/gu, "");
+  return {
+    sanitized,
+    wasSanitized: sanitized !== destination
+  };
+}
 function assertRoutableAddress(destination) {
   if (!destination || typeof destination !== "string") {
     throw new ExtractRoutingError(
@@ -254,17 +275,29 @@ function assertRoutableAddress(destination) {
   }
 }
 function extractRouting(input) {
-  assertRoutableAddress(input.destination);
+  const { sanitized: destination, wasSanitized } = sanitizeDestination(
+    input.destination
+  );
+  assertRoutableAddress(destination);
+  const minSeverity = input.minSeverityLevel ?? "info";
+  const sanitizedWarning = wasSanitized ? {
+    code: "SANITIZED_HIDDEN_CHARS",
+    severity: "info",
+    message: "Destination address contained non-printable characters or whitespace that were stripped."
+  } : null;
+  const initWarnings = (additional = []) => {
+    return sanitizedWarning ? [sanitizedWarning, ...additional] : [...additional];
+  };
   let parsed;
   try {
-    parsed = parse(input.destination);
+    parsed = parse(destination);
   } catch (error) {
     if (error instanceof AddressParseError) {
       return {
         destinationBaseAccount: null,
         routingId: null,
         routingSource: "none",
-        warnings: [],
+        warnings: filterBySeverity(initWarnings(), minSeverity),
         destinationError: {
           code: error.code,
           message: error.message
@@ -278,11 +311,11 @@ function extractRouting(input) {
       destinationBaseAccount: null,
       routingId: null,
       routingSource: "none",
-      warnings: []
+      warnings: filterBySeverity(initWarnings(), minSeverity)
     };
   }
   if (parsed.kind === "C") {
-    const warnings2 = [...parsed.warnings];
+    const warnings2 = initWarnings(parsed.warnings);
     warnings2.push({
       code: "INVALID_DESTINATION",
       severity: "error",
@@ -295,11 +328,11 @@ function extractRouting(input) {
       destinationBaseAccount: null,
       routingId: null,
       routingSource: "none",
-      warnings: warnings2
+      warnings: filterBySeverity(warnings2, minSeverity)
     };
   }
   if (parsed.kind === "M") {
-    const warnings2 = [...parsed.warnings];
+    const warnings2 = initWarnings(parsed.warnings);
     if (input.memoType === "id" || input.memoType === "text" && /^\d+$/.test(input.memoValue ?? "")) {
       warnings2.push({
         code: "MEMO_PRESENT_WITH_MUXED",
@@ -317,12 +350,12 @@ function extractRouting(input) {
       destinationBaseAccount: parsed.baseG,
       routingId: parsed.muxedId,
       routingSource: "muxed",
-      warnings: warnings2
+      warnings: filterBySeverity(warnings2, minSeverity)
     };
   }
   let routingId = null;
   let routingSource = "none";
-  const warnings = [...parsed.warnings];
+  const warnings = initWarnings(parsed.warnings);
   if (input.memoType === "id") {
     const rawValue = input.memoValue ?? "";
     const norm = normalizeMemoTextId(rawValue);
@@ -370,7 +403,7 @@ function extractRouting(input) {
     destinationBaseAccount: parsed.address,
     routingId,
     routingSource,
-    warnings
+    warnings: filterBySeverity(warnings, minSeverity)
   };
 }
 
@@ -386,6 +419,98 @@ function extractRoutingFromTx(tx) {
     memoValue: tx.memo.value?.toString() ?? null,
     sourceAccount: tx.source ?? null
   });
+}
+
+// src/routing/extractFromURI.ts
+function mapMemoType(sep7MemoType) {
+  if (!sep7MemoType) return "none";
+  const upper = sep7MemoType.toUpperCase();
+  switch (upper) {
+    case "MEMO_ID":
+      return "id";
+    case "MEMO_TEXT":
+      return "text";
+    case "MEMO_HASH":
+      return "hash";
+    case "MEMO_RETURN":
+      return "return";
+    default:
+      return "none";
+  }
+}
+function extractRoutingFromURI(uriString) {
+  if (!uriString.startsWith("web+stellar:")) {
+    return {
+      success: false,
+      error: "URI must use 'web+stellar:' scheme",
+      code: "INVALID_URI"
+    };
+  }
+  const withoutScheme = uriString.slice("web+stellar:".length);
+  const [operation, queryString] = withoutScheme.includes("?") ? withoutScheme.split("?", 2) : [withoutScheme, ""];
+  if (operation !== "pay") {
+    return {
+      success: false,
+      error: `Unsupported operation: '${operation}'. Only 'pay' is supported for routing extraction.`,
+      code: "UNSUPPORTED_OPERATION"
+    };
+  }
+  let params;
+  try {
+    params = new URLSearchParams(queryString);
+  } catch {
+    return {
+      success: false,
+      error: "Failed to parse URI query parameters",
+      code: "INVALID_ENCODING"
+    };
+  }
+  const destination = params.get("destination");
+  if (!destination || destination.trim() === "") {
+    return {
+      success: false,
+      error: "Missing required 'destination' parameter",
+      code: "MISSING_DESTINATION"
+    };
+  }
+  const rawParams = {
+    destination: safelyDecode(destination.trim()) ?? destination.trim(),
+    amount: safelyDecode(params.get("amount")),
+    assetCode: safelyDecode(params.get("asset_code")),
+    assetIssuer: safelyDecode(params.get("asset_issuer")),
+    memo: safelyDecode(params.get("memo")),
+    memoType: safelyDecode(params.get("memo_type")),
+    callback: safelyDecode(params.get("callback")),
+    msg: safelyDecode(params.get("msg")),
+    networkPassphrase: safelyDecode(params.get("network_passphrase")),
+    originDomain: safelyDecode(params.get("origin_domain")),
+    signature: safelyDecode(params.get("signature"))
+  };
+  const routingInput = {
+    destination: rawParams.destination,
+    memoType: mapMemoType(rawParams.memoType),
+    memoValue: rawParams.memo ?? null,
+    sourceAccount: null
+  };
+  const routingResult = extractRouting(routingInput);
+  return {
+    success: true,
+    routing: routingResult,
+    rawParams
+  };
+}
+function safelyDecode(value) {
+  if (value === null || value === "") {
+    return void 0;
+  }
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+function isSuccessfulURIResult(result) {
+  return result.success === true;
 }
 
 // src/routing/types.ts
@@ -404,6 +529,8 @@ function routingIdAsBigInt(routingId) {
   encodeMuxed,
   extractRouting,
   extractRoutingFromTx,
+  extractRoutingFromURI,
+  isSuccessfulURIResult,
   normalizeMemoTextId,
   parse,
   routingIdAsBigInt,

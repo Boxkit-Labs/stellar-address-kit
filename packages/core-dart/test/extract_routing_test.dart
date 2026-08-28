@@ -165,5 +165,22 @@ void main() {
         throwsA(isA<ExtractRoutingException>()),
       );
     });
+
+    test('sanitizes invisible Unicode characters and whitespace', () async {
+      final dirtyG = '\u200B\uFEFF  \r\n$baseG \t\u200D\u2060\n';
+      final result = await extractRouting(RoutingInput(
+        destination: dirtyG,
+        memoType: 'id',
+        memoValue: '100',
+      ));
+
+      expect(result.destinationBaseAccount, baseG);
+      expect(result.id, BigInt.from(100));
+      expect(result.source, RoutingSource.memo);
+      expect(result.warnings.length, 1);
+      expect(result.warnings[0].code, WarningCode.sanitizedHiddenChars);
+      expect(result.warnings[0].severity, 'info');
+    });
   });
 }
+

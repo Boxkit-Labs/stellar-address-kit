@@ -1,5 +1,6 @@
 {
-  "spec_version": "1.0.0",
+  "spec_version": "1.0.1",
+  "description": "Normative test vectors for the Stellar Address Kit. This file is the single source of truth for routing logic across TypeScript, Go, and Dart implementations. Any change to routing behavior MUST start here.",
   "cases": [
     {
       "module": "muxed_encode",
@@ -72,10 +73,7 @@
         "baseG": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
         "id": "0"
       },
-      "tags": [
-        "positive",
-        "edge"
-      ]
+      "tags": ["positive", "edge"]
     },
     {
       "module": "muxed_decode",
@@ -88,10 +86,7 @@
         "baseG": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
         "id": "1"
       },
-      "tags": [
-        "positive",
-        "edge"
-      ]
+      "tags": ["positive", "edge"]
     },
     {
       "module": "muxed_decode",
@@ -104,11 +99,7 @@
         "baseG": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
         "id": "9007199254740992"
       },
-      "tags": [
-        "positive",
-        "edge",
-        "interop"
-      ]
+      "tags": ["positive", "edge", "interop"]
     },
     {
       "module": "muxed_decode",
@@ -121,11 +112,7 @@
         "baseG": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
         "id": "9007199254740993"
       },
-      "tags": [
-        "positive",
-        "edge",
-        "interop"
-      ]
+      "tags": ["positive", "edge", "interop"]
     },
     {
       "module": "muxed_decode",
@@ -138,11 +125,7 @@
         "baseG": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
         "id": "18446744073709551615"
       },
-      "tags": [
-        "positive",
-        "edge",
-        "interop"
-      ]
+      "tags": ["positive", "edge", "interop"]
     },
     {
       "module": "muxed_decode",
@@ -153,10 +136,7 @@
       "expected": {
         "expected_error": "invalid encoded string"
       },
-      "tags": [
-        "negative",
-        "edge"
-      ]
+      "tags": ["negative", "edge"]
     },
     {
       "module": "detect",
@@ -179,10 +159,7 @@
           }
         ]
       },
-      "tags": [
-        "negative",
-        "edge"
-      ]
+      "tags": ["negative", "edge"]
     },
     {
       "module": "extract_routing",
@@ -197,10 +174,7 @@
         "routingSource": "muxed",
         "warnings": []
       },
-      "tags": [
-        "positive",
-        "interop"
-      ]
+      "tags": ["positive", "interop"]
     },
     {
       "module": "extract_routing",
@@ -224,9 +198,7 @@
           }
         ]
       },
-      "tags": [
-        "negative"
-      ]
+      "tags": ["negative"]
     },
     {
       "module": "extract_routing",
@@ -242,9 +214,23 @@
         "routingSource": "memo",
         "warnings": []
       },
-      "tags": [
-        "positive"
-      ]
+      "tags": ["positive"]
+    },
+    {
+      "module": "extract_routing",
+      "description": "G-address + MEMO_ID routing with 2^53+1 canary",
+      "input": {
+        "destination": "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1",
+        "memoType": "id",
+        "memoValue": "9007199254740993"
+      },
+      "expected": {
+        "destinationBaseAccount": "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1",
+        "routingId": "9007199254740993",
+        "routingSource": "memo",
+        "warnings": []
+      },
+      "tags": ["positive", "edge"]
     },
     {
       "module": "extract_routing",
@@ -260,9 +246,7 @@
         "routingSource": "memo",
         "warnings": []
       },
-      "tags": [
-        "positive"
-      ]
+      "tags": ["positive"]
     },
     {
       "module": "extract_routing",
@@ -288,10 +272,107 @@
           }
         ]
       },
-      "tags": [
-        "negative",
-        "edge"
-      ]
+      "tags": ["negative", "edge"]
+    },
+    {
+      "module": "detect",
+      "description": "non-base32 digit '0' injected into address must be rejected",
+      "input": {
+        "address": "GA0CUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI"
+      },
+      "expected": {
+        "kind": null,
+        "address": null,
+        "warnings": [
+          {
+            "code": "INVALID_STRKEY",
+            "severity": "error",
+            "message": "address contains characters outside the base32 alphabet"
+          }
+        ]
+      },
+      "tags": ["negative", "edge"]
+    },
+    {
+      "module": "detect",
+      "description": "punctuation injected into address must be rejected",
+      "input": {
+        "address": "GA!CUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI"
+      },
+      "expected": {
+        "kind": null,
+        "address": null,
+        "warnings": [
+          {
+            "code": "INVALID_STRKEY",
+            "severity": "error",
+            "message": "address contains characters outside the base32 alphabet"
+          }
+        ]
+      },
+      "tags": ["negative", "edge"]
+    },
+    {
+      "module": "detect",
+      "description": "embedded null byte must be rejected without crashing or truncating",
+      "input": {
+        "address": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRS\u0000"
+      },
+      "expected": {
+        "kind": null,
+        "address": null,
+        "warnings": [
+          {
+            "code": "INVALID_STRKEY",
+            "severity": "error",
+            "message": "address contains characters outside the base32 alphabet"
+          }
+        ]
+      },
+      "tags": ["negative", "edge"]
+    },
+    {
+      "module": "extract_routing",
+      "description": "G-address with invisible Unicode characters and whitespace sanitized",
+      "input": {
+        "destination": "\u200B  \r\nGAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI\t\u200D\u2060\uFEFF\n",
+        "memoType": "id",
+        "memoValue": "100"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": "100",
+        "routingSource": "memo",
+        "warnings": [
+          {
+            "code": "SANITIZED_HIDDEN_CHARS",
+            "severity": "info",
+            "message": "Destination address contained non-printable characters or whitespace that were stripped."
+          }
+        ]
+      },
+      "tags": ["positive", "edge"]
+    },
+    {
+      "module": "extract_routing",
+      "description": "M-address with zero-width joiner, non-joiner, and control characters sanitized",
+      "input": {
+        "destination": "\u200CMAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACAAAAAAAAAAAAHOO2\u200D\u2060\n",
+        "memoType": "none"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": "1",
+        "routingSource": "muxed",
+        "warnings": [
+          {
+            "code": "SANITIZED_HIDDEN_CHARS",
+            "severity": "info",
+            "message": "Destination address contained non-printable characters or whitespace that were stripped."
+          }
+        ]
+      },
+      "tags": ["positive", "edge"]
     }
   ]
 }

@@ -27,6 +27,23 @@ export class ExtractRoutingError extends Error {
 }
 
 /**
+ * Strips non-printable characters, Unicode control/format characters, and whitespace.
+ */
+function sanitizeDestination(destination: string): {
+  sanitized: string;
+  wasSanitized: boolean;
+} {
+  if (!destination || typeof destination !== "string") {
+    return { sanitized: destination, wasSanitized: false };
+  }
+  const sanitized = destination.replace(/[\p{C}\s]/gu, "");
+  return {
+    sanitized,
+    wasSanitized: sanitized !== destination,
+  };
+}
+
+/**
  * Validates that the destination string passes the minimum structural
  * requirements for a Stellar address before routing logic is applied.
  * Only G-addresses and M-addresses are valid routing targets.
@@ -58,20 +75,38 @@ function assertRoutableAddress(destination: string): void {
  * @returns A result containing the base account, routing ID, source, and any warnings.
  */
 export function extractRouting(input: RoutingInput): RoutingResult {
-  assertRoutableAddress(input.destination);
+  const { sanitized: destination, wasSanitized } = sanitizeDestination(
+    input.destination
+  );
+
+  assertRoutableAddress(destination);
 
   const minSeverity = input.minSeverityLevel ?? "info";
+  const sanitizedWarning: Warning | null = wasSanitized
+    ? {
+        code: "SANITIZED_HIDDEN_CHARS",
+        severity: "info",
+        message:
+          "Destination address contained non-printable characters or whitespace that were stripped.",
+      }
+    : null;
+
+  const initWarnings = (additional: Warning[] = []): Warning[] => {
+    return sanitizedWarning
+      ? [sanitizedWarning, ...additional]
+      : [...additional];
+  };
 
   let parsed;
   try {
-    parsed = parse(input.destination);
+    parsed = parse(destination);
   } catch (error) {
     if (error instanceof AddressParseError) {
       return {
         destinationBaseAccount: null,
         routingId: null,
         routingSource: "none",
-        warnings: [],
+        warnings: filterBySeverity(initWarnings(), minSeverity),
         destinationError: {
           code: error.code,
           message: error.message,
@@ -86,12 +121,12 @@ export function extractRouting(input: RoutingInput): RoutingResult {
       destinationBaseAccount: null,
       routingId: null,
       routingSource: "none",
-      warnings: [],
+      warnings: filterBySeverity(initWarnings(), minSeverity),
     };
   }
 
   if (parsed.kind === "C") {
-    const warnings: Warning[] = [...parsed.warnings];
+    const warnings: Warning[] = initWarnings(parsed.warnings);
 
     warnings.push({
       code: "INVALID_DESTINATION",
@@ -111,7 +146,7 @@ export function extractRouting(input: RoutingInput): RoutingResult {
   }
 
   if (parsed.kind === "M") {
-    const warnings: Warning[] = [...parsed.warnings];
+    const warnings: Warning[] = initWarnings(parsed.warnings);
 
     if (
       input.memoType === "id" ||
@@ -142,7 +177,7 @@ export function extractRouting(input: RoutingInput): RoutingResult {
 
   let routingId: string | bigint | null = null;
   let routingSource: "none" | "memo" = "none";
-  const warnings: Warning[] = [...parsed.warnings];
+  const warnings: Warning[] = initWarnings(parsed.warnings);
 
   if (input.memoType === "id") {
     const rawValue = input.memoValue ?? "";

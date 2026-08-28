@@ -20,15 +20,24 @@ import 'safe_routing_id.dart';
 /// For future compatibility with async network checks (Federation, SEP-0029),
 /// use [extractRouting] instead.
 RoutingResult extractRoutingSync(RoutingInput input) {
-  final trimmed = input.destination.trim();
-  if (trimmed.isEmpty) {
-    throw const ExtractRoutingException('Invalid input: destination must be a non-empty string.');
+  final sanitized = input.destination.replaceAll(
+    RegExp(
+      r'[\x00-\x1F\x7F-\x9F\u200B-\u200F\u2028-\u202F\u2060-\u206F\uFEFF\u00AD\uFFF9-\uFFFB\s]',
+    ),
+    '',
+  );
+  final wasSanitized = sanitized != input.destination;
+
+  if (sanitized.isEmpty) {
+    throw const ExtractRoutingException(
+      'Invalid input: destination must be a non-empty string.',
+    );
   }
 
-  final prefix = trimmed[0].toUpperCase();
+  final prefix = sanitized[0].toUpperCase();
   if (prefix != 'G' && prefix != 'M') {
     throw ExtractRoutingException(
-      'Invalid destination: expected a G or M address, got "${input.destination}".',
+      'Invalid destination: expected a G or M address, got "$sanitized".',
     );
   }
 
@@ -46,12 +55,21 @@ RoutingResult extractRoutingSync(RoutingInput input) {
     }
   }
 
-  final parsed = parse(input.destination);
+  final parsed = parse(sanitized);
 
   if (parsed.kind == null) {
     return RoutingResult(
       source: RoutingSource.none,
-      warnings: [],
+      warnings: wasSanitized
+          ? [
+              const RoutingWarning(
+                code: codes.WarningCode.sanitizedHiddenChars,
+                severity: 'info',
+                message:
+                    'Destination address contained non-printable characters or whitespace that were stripped.',
+              ),
+            ]
+          : [],
       destinationError: parsed.error != null
           ? DestinationError(
               code: parsed.error!.code,
@@ -62,6 +80,16 @@ RoutingResult extractRoutingSync(RoutingInput input) {
   }
 
   final warnings = <RoutingWarning>[];
+  if (wasSanitized) {
+    warnings.add(
+      const RoutingWarning(
+        code: codes.WarningCode.sanitizedHiddenChars,
+        severity: 'info',
+        message:
+            'Destination address contained non-printable characters or whitespace that were stripped.',
+      ),
+    );
+  }
   for (final w in parsed.warnings) {
     warnings.add(RoutingWarning(
       code: w.code,

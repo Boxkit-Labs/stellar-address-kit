@@ -1,5 +1,5 @@
 {
-  "spec_version": "1.0.0",
+  "spec_version": "1.0.1",
   "description": "Normative test vectors for the Stellar Address Kit. This file is the single source of truth for routing logic across TypeScript, Go, and Dart implementations. Any change to routing behavior MUST start here.",
   "cases": [
     {
@@ -330,6 +330,49 @@
         ]
       },
       "tags": ["negative", "edge"]
+    },
+    {
+      "module": "extract_routing",
+      "description": "G-address with invisible Unicode characters and whitespace sanitized",
+      "input": {
+        "destination": "\u200B  \r\nGAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI\t\u200D\u2060\uFEFF\n",
+        "memoType": "id",
+        "memoValue": "100"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": "100",
+        "routingSource": "memo",
+        "warnings": [
+          {
+            "code": "SANITIZED_HIDDEN_CHARS",
+            "severity": "info",
+            "message": "Destination address contained non-printable characters or whitespace that were stripped."
+          }
+        ]
+      },
+      "tags": ["positive", "edge"]
+    },
+    {
+      "module": "extract_routing",
+      "description": "M-address with zero-width joiner, non-joiner, and control characters sanitized",
+      "input": {
+        "destination": "\u200CMAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACAAAAAAAAAAAAHOO2\u200D\u2060\n",
+        "memoType": "none"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": "1",
+        "routingSource": "muxed",
+        "warnings": [
+          {
+            "code": "SANITIZED_HIDDEN_CHARS",
+            "severity": "info",
+            "message": "Destination address contained non-printable characters or whitespace that were stripped."
+          }
+        ]
+      },
+      "tags": ["positive", "edge"]
     }
   ]
 }

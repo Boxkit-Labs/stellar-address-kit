@@ -17,7 +17,12 @@ declare class AddressParseError extends Error {
 declare function detect(address: string): "G" | "M" | "C" | "invalid";
 
 type AddressKind = "G" | "M" | "C";
-type WarningCode = "NON_CANONICAL_ADDRESS" | "NON_CANONICAL_ROUTING_ID" | "MEMO_IGNORED_FOR_MUXED" | "MEMO_PRESENT_WITH_MUXED" | "CONTRACT_SENDER_DETECTED" | "MEMO_TEXT_UNROUTABLE" | "MEMO_ID_INVALID_FORMAT" | "UNSUPPORTED_MEMO_TYPE" | "INVALID_DESTINATION";
+/**
+ * Severity levels for validation warnings.
+ * Used with `minSeverityLevel` to filter warnings by importance.
+ */
+type WarningSeverity = "info" | "warn" | "error";
+type WarningCode = "NON_CANONICAL_ADDRESS" | "NON_CANONICAL_ROUTING_ID" | "MEMO_IGNORED_FOR_MUXED" | "MEMO_PRESENT_WITH_MUXED" | "CONTRACT_SENDER_DETECTED" | "MEMO_TEXT_UNROUTABLE" | "MEMO_ID_INVALID_FORMAT" | "UNSUPPORTED_MEMO_TYPE" | "INVALID_DESTINATION" | "SANITIZED_HIDDEN_CHARS";
 type Warning = {
     code: "NON_CANONICAL_ADDRESS" | "NON_CANONICAL_ROUTING_ID";
     severity: "warn";
@@ -128,6 +133,12 @@ type RoutingInput = {
     memoType: string;
     memoValue: string | null;
     sourceAccount: string | null;
+    /**
+     * Minimum severity level for warnings to include in the result.
+     * Warnings below this threshold are filtered out.
+     * Defaults to `'info'` (all warnings are returned).
+     */
+    minSeverityLevel?: WarningSeverity;
 };
 type KnownMemoType = "none" | "id" | "text" | "hash" | "return";
 type RoutingResult = {
@@ -165,6 +176,70 @@ declare function extractRouting(input: RoutingInput): RoutingResult;
  */
 declare function extractRoutingFromTx(tx: any): RoutingResult | null;
 
+/**
+ * SEP-0007 URI Parser
+ *
+ * Parses `web+stellar:pay?...` URIs (commonly from QR code scanners)
+ * and delegates to the core `extractRouting` logic to produce canonical
+ * routing information.
+ *
+ * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0007.md
+ */
+
+interface SEP7PayParams {
+    destination: string;
+    amount?: string;
+    assetCode?: string;
+    assetIssuer?: string;
+    memo?: string;
+    memoType?: string;
+    callback?: string;
+    msg?: string;
+    networkPassphrase?: string;
+    originDomain?: string;
+    signature?: string;
+}
+type ExtractRoutingFromURIResult = {
+    success: true;
+    routing: RoutingResult;
+    rawParams: SEP7PayParams;
+} | {
+    success: false;
+    error: string;
+    code: "INVALID_URI" | "UNSUPPORTED_OPERATION" | "MISSING_DESTINATION" | "INVALID_ENCODING";
+};
+/**
+ * Parse a SEP-0007 URI and extract canonical routing information.
+ *
+ * Supported format:
+ *   web+stellar:pay?destination=<G...>&memo=<value>&memo_type=<MEMO_TEXT|MEMO_ID|MEMO_HASH|MEMO_RETURN>
+ *
+ * The function safely decodes URL-encoded parameters, validates the scheme,
+ * and passes `destination` + `memo` into `extractRouting()` for canonical
+ * output (handling G-addresses, M-addresses, C-addresses, etc.).
+ *
+ * @param uriString - The raw URI string from a QR code scanner or deeplink
+ * @returns ExtractRoutingFromURIResult
+ *
+ * @example
+ * ```ts
+ * const result = extractRoutingFromURI(
+ *   "web+stellar:pay?destination=GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI&memo=123&memo_type=MEMO_ID"
+ * );
+ * if (result.success) {
+ *   console.log(result.routing.destinationBaseAccount); // "GAYC..."
+ *   console.log(result.routing.routingId);            // "123"
+ * }
+ * ```
+ */
+declare function extractRoutingFromURI(uriString: string): ExtractRoutingFromURIResult;
+/**
+ * Type guard for successful URI parsing.
+ */
+declare function isSuccessfulURIResult(result: ExtractRoutingFromURIResult): result is ExtractRoutingFromURIResult & {
+    success: true;
+};
+
 type NormalizeResult = {
     normalized: string | null;
     warnings: Warning[];
@@ -178,4 +253,4 @@ type NormalizeResult = {
  */
 declare function normalizeMemoTextId(s: string): NormalizeResult;
 
-export { type Address, type AddressKind, AddressParseError, type ErrorCode, ExtractRoutingError, type KnownMemoType, type NormalizeResult, type ParseResult, type RoutingInput, type RoutingResult, type RoutingSource, type Warning, type WarningCode, decodeMuxed, detect, encodeMuxed, extractRouting, extractRoutingFromTx, normalizeMemoTextId, parse, routingIdAsBigInt, validate };
+export { type Address, type AddressKind, AddressParseError, type ErrorCode, ExtractRoutingError, type ExtractRoutingFromURIResult, type KnownMemoType, type NormalizeResult, type ParseResult, type RoutingInput, type RoutingResult, type RoutingSource, type SEP7PayParams, type Warning, type WarningCode, type WarningSeverity, decodeMuxed, detect, encodeMuxed, extractRouting, extractRoutingFromTx, extractRoutingFromURI, isSuccessfulURIResult, normalizeMemoTextId, parse, routingIdAsBigInt, validate };

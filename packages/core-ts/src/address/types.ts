@@ -16,7 +16,8 @@ export type WarningCode =
   | "MEMO_TEXT_UNROUTABLE"
   | "MEMO_ID_INVALID_FORMAT"
   | "UNSUPPORTED_MEMO_TYPE"
-  | "INVALID_DESTINATION";
+  | "INVALID_DESTINATION"
+  | "SANITIZED_HIDDEN_CHARS";
 
 export type Warning =
   | {

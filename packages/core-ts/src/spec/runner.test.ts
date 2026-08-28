@@ -40,7 +40,11 @@ describe("Normative Vector Tests", () => {
       switch (c.module) {
         case "detect": {
           const kind = detect(c.input.address);
-          expect(kind).toBe(c.expected.kind);
+          if (c.expected.kind === null) {
+            expect(kind).toBe("invalid");
+          } else {
+            expect(kind).toBe(c.expected.kind);
+          }
           break;
         }
         case "muxed_encode": {
