@@ -31,13 +31,17 @@ jobs:
           cache: false
 
       - name: Test prism-core (lib)
-        run: cargo test -p prism-core
+        working-directory: examples/prism-core
+        run: cargo test
 
       - name: Test rust-address-fuzzer
-        run: cargo test -p rust-address-fuzzer
+        working-directory: examples/rust-address-fuzzer
+        run: cargo test
 
       - name: Build prism-diff binary
-        run: cargo build -p prism-core --features diff --bin prism-diff
+        working-directory: examples/prism-core
+        run: cargo build --features diff --bin prism-diff
 
       - name: Run prism-diff smoke test (1k random inputs)
-        run: cargo run -p prism-core --features diff --bin prism-diff -- --random 1000 --seed 42
+        working-directory: examples/prism-core
+        run: cargo run --features diff --bin prism-diff -- --random 1000 --seed 42
