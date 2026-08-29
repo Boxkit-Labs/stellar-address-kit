@@ -66,7 +66,8 @@
           "enum": [
             "MEMO_IGNORED_FOR_MUXED", "MEMO_PRESENT_WITH_MUXED",
             "CONTRACT_SENDER_DETECTED", "MEMO_TEXT_UNROUTABLE",
-            "MEMO_ID_INVALID_FORMAT", "MISSING_REQUIRED_MEMO"
+            "MEMO_ID_INVALID_FORMAT", "MISSING_REQUIRED_MEMO",
+            "INVALID_STRKEY"
           ]
         },
         "severity": { "type": "string", "enum": ["info", "warn", "error"] },
