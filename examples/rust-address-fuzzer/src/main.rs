@@ -12,7 +12,11 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 
 #[derive(ClapParser, Debug)]
-#[command(name = "rust-address-fuzzer", version, about = "Fuzz-tests the prism-core Stellar address parser")]
+#[command(
+    name = "rust-address-fuzzer",
+    version,
+    about = "Fuzz-tests the prism-core Stellar address parser"
+)]
 struct Cli {
     /// Generate N random strings and parse each one
     #[arg(long, value_name = "N", conflicts_with_all = ["corpus", "stdin_mode"])]
@@ -73,8 +77,7 @@ fn main() {
     };
 
     stats.report.inputs_run = stats.total;
-    stats.report.findings_count = stats.panics; // In the future, logic errors would also go here.
-    
+
     eprintln!(
         "Done – {} inputs | {} ok | {} err | {} findings",
         stats.total, stats.ok, stats.err, stats.report.findings_count
@@ -104,6 +107,7 @@ fn run_random(rng: &mut StdRng, n: usize, verbose: bool) -> Stats {
             random_string(rng)
         };
         fuzz_one(&input, verbose, &mut stats);
+        fuzz_checksum_corruption(&input, rng, verbose, &mut stats);
     }
     stats
 }
@@ -113,23 +117,33 @@ fn run_corpus(path: &PathBuf, verbose: bool, max_iters: Option<usize>) -> Stats 
         eprintln!("error: cannot open corpus file {}: {e}", path.display());
         std::process::exit(2);
     });
+    let mut rng = StdRng::seed_from_u64(0xC0DE_5EED);
     let mut stats = Stats::default();
     for (i, line) in io::BufReader::new(file).lines().enumerate() {
         if let Some(m) = max_iters {
-            if i >= m { break; }
+            if i >= m {
+                break;
+            }
         }
-        fuzz_one(&line.unwrap_or_default(), verbose, &mut stats);
+        let input = line.unwrap_or_default();
+        fuzz_one(&input, verbose, &mut stats);
+        fuzz_checksum_corruption(&input, &mut rng, verbose, &mut stats);
     }
     stats
 }
 
 fn run_stdin(verbose: bool, max_iters: Option<usize>) -> Stats {
+    let mut rng = StdRng::seed_from_u64(0xC0DE_5EED);
     let mut stats = Stats::default();
     for (i, line) in io::stdin().lock().lines().enumerate() {
         if let Some(m) = max_iters {
-            if i >= m { break; }
+            if i >= m {
+                break;
+            }
         }
-        fuzz_one(&line.unwrap_or_default(), verbose, &mut stats);
+        let input = line.unwrap_or_default();
+        fuzz_one(&input, verbose, &mut stats);
+        fuzz_checksum_corruption(&input, &mut rng, verbose, &mut stats);
     }
     stats
 }
@@ -138,7 +152,7 @@ fn fuzz_one(input: &str, verbose: bool, stats: &mut Stats) {
     stats.total += 1;
     let input_owned = input.to_owned();
     let res = std::panic::catch_unwind(|| parse::parse(&input_owned));
-    
+
     match res {
         Ok(Ok(addr)) => {
             stats.ok += 1;
@@ -154,8 +168,45 @@ fn fuzz_one(input: &str, verbose: bool, stats: &mut Stats) {
         }
         Err(_) => {
             stats.panics += 1;
+            stats.report.findings_count += 1;
             eprintln!("PANIC  ← {input:?}");
             let _ = std::fs::write("reproducer.txt", input);
+        }
+    }
+}
+
+/// Flip bits in the trailing CRC-16 of `input` and assert the parser rejects
+/// the result as `InvalidChecksum`.  Coincidentally-valid CRCs are skipped
+/// so they are not logged as false-positive findings.
+fn fuzz_checksum_corruption(input: &str, rng: &mut StdRng, verbose: bool, stats: &mut Stats) {
+    let (mutated, check, finding) = mutators::checksum::fuzz_one(input, rng);
+    match check {
+        mutators::checksum::ChecksumCheck::SkippedValidChecksum => {
+            if verbose {
+                eprintln!("SKIP checksum still valid  ← {mutated:?}");
+            }
+        }
+        mutators::checksum::ChecksumCheck::RejectedChecksum
+        | mutators::checksum::ChecksumCheck::RejectedOther => {
+            stats.total += 1;
+            stats.err += 1;
+            if verbose {
+                eprintln!("ERR  checksum  ← {mutated:?}");
+            }
+        }
+        mutators::checksum::ChecksumCheck::Accepted => {
+            stats.total += 1;
+            stats.ok += 1;
+            if let Some(finding) = finding {
+                stats.report.record_finding(finding);
+            }
+        }
+        mutators::checksum::ChecksumCheck::Panicked => {
+            stats.total += 1;
+            stats.panics += 1;
+            if let Some(finding) = finding {
+                stats.report.record_finding(finding);
+            }
         }
     }
 }
@@ -177,6 +228,8 @@ fn random_string(rng: &mut StdRng) -> String {
         format!("{prefix}{body}")
     } else {
         let len = rng.gen_range(0..=128);
-        (0..len).map(|_| rng.gen_range(0x20u8..=0x7e) as char).collect()
+        (0..len)
+            .map(|_| rng.gen_range(0x20u8..=0x7e) as char)
+            .collect()
     }
 }

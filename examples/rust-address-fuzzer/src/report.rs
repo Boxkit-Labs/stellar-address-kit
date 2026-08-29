@@ -1,3 +1,12 @@
+/// A single fuzzer finding: the parser accepted a mutation it must reject,
+/// or panicked while parsing it.
+#[derive(Debug, Clone)]
+pub struct Finding {
+    pub input: String,
+    pub mutator: String,
+    pub message: String,
+}
+
 #[derive(Default)]
 pub struct Report {
     pub inputs_run: usize,
@@ -12,6 +21,16 @@ impl Report {
             findings_count: 0,
             divergences: 0,
         }
+    }
+
+    /// Record a finding and persist a one-line reproducer for replay.
+    pub fn record_finding(&mut self, finding: Finding) {
+        self.findings_count += 1;
+        eprintln!(
+            "FINDING [{}] {}  ← {:?}",
+            finding.mutator, finding.message, finding.input
+        );
+        let _ = std::fs::write("reproducer.txt", &finding.input);
     }
 
     pub fn print_json(&self) {
