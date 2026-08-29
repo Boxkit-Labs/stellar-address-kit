@@ -202,6 +202,30 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 	}
 }
 
+// MemoRequirementFetcher retrieves whether a destination account requires a
+// routing memo. Implementations can use Horizon, an indexer, or a cached source.
+type MemoRequirementFetcher func(baseAccount string) (bool, error)
+
+// ExtractRoutingWithMemoRequirement performs normal routing extraction and
+// optionally adds the SEP-0029 error when a classic destination requires a
+// memo but no routing ID was supplied. Fetch failures fail open so callers
+// retain the result of the synchronous parser.
+func ExtractRoutingWithMemoRequirement(input RoutingInput, fetch MemoRequirementFetcher) RoutingResult {
+	result := ExtractRouting(input)
+	if fetch == nil || result.DestinationBaseAccount == "" || result.RoutingID != nil || result.DestinationError != nil {
+		return result
+	}
+	required, err := fetch(result.DestinationBaseAccount)
+	if err == nil && required {
+		result.Warnings = append(result.Warnings, address.Warning{
+			Code:     address.WarnMissingRequiredMemo,
+			Severity: "error",
+			Message:  "Destination account requires a memo, but no routing ID was provided.",
+		})
+	}
+	return result
+}
+
 func stringValue(s string) string {
 	return s
 }

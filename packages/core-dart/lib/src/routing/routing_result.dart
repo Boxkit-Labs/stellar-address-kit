@@ -61,6 +61,13 @@ class RoutingWarning {
     message: 'Contract source detected. Routing state cleared.',
   );
 
+  /// Emitted when SEP-0029 requires a memo but no routing ID was supplied.
+  static const missingRequiredMemo = RoutingWarning(
+    code: 'MISSING_REQUIRED_MEMO',
+    severity: 'error',
+    message: 'Destination account requires a memo, but no routing ID was provided.',
+  );
+
   @override
   String toString() => '[$severity] $code: $message';
 
