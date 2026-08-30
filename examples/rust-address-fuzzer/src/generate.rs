@@ -11,7 +11,7 @@
 //! | Kind | Payload                                    | Payload len | Total (+ 2B CRC) | Strkey chars |
 //! |------|--------------------------------------------|-------------|------------------|--------------|
 //! | G    | version(1) + ed25519_key(32)               | 33          | 35               | 56           |
-//! | M    | version(1) + muxed_id_BE(8) + ed25519_key(32) | 41       | 43               | 69           |
+//! | M    | version(1) + ed25519_key(32) + muxed_id_BE(8) | 41       | 43               | 69           |
 //! | C    | version(1) + contract_hash(32)             | 33          | 35               | 56           |
 
 use prism_core::address::AddressKind;
@@ -19,9 +19,9 @@ use rand::Rng;
 
 // ── version bytes (top 5 bits of the first byte, as used by prism-core) ──────
 
-const VERSION_G: u8 = 6 << 3;  // 0x30
+const VERSION_G: u8 = 6 << 3; // 0x30
 const VERSION_M: u8 = 12 << 3; // 0x60
-const VERSION_C: u8 = 2 << 3;  // 0x10
+const VERSION_C: u8 = 2 << 3; // 0x10
 
 // ── CRC-16 (CCITT, same polynomial as prism-core) ────────────────────────────
 
@@ -106,10 +106,10 @@ pub fn random_valid_address(kind: AddressKind, rng: &mut impl Rng) -> String {
             let mut key = [0u8; 32];
             rng.fill(&mut key);
 
-            // M payload body = muxed_id_BE(8) || ed25519_key(32)
+            // M payload body = ed25519_key(32) || muxed_id_BE(8)
             let mut body = Vec::with_capacity(40);
-            body.extend_from_slice(&muxed_id.to_be_bytes());
             body.extend_from_slice(&key);
+            body.extend_from_slice(&muxed_id.to_be_bytes());
             build_strkey(VERSION_M, &body)
         }
 
@@ -125,9 +125,7 @@ pub fn random_valid_address(kind: AddressKind, rng: &mut impl Rng) -> String {
     // If our own generator produces an address that does not parse, the seed
     // corpus is broken.  Panic loudly so the problem is noticed immediately.
     let parsed = prism_core::address::parse(&address).unwrap_or_else(|e| {
-        panic!(
-            "generator produced an invalid {kind:?} address ({address:?}): {e}"
-        );
+        panic!("generator produced an invalid {kind:?} address ({address:?}): {e}");
     });
     assert_eq!(
         parsed.kind(),
@@ -145,8 +143,8 @@ pub fn random_valid_address(kind: AddressKind, rng: &mut impl Rng) -> String {
 mod tests {
     use super::*;
     use prism_core::address::AddressKind;
-    use rand::SeedableRng;
     use rand::rngs::StdRng;
+    use rand::SeedableRng;
 
     fn seeded() -> StdRng {
         StdRng::seed_from_u64(0xDEAD_BEEF_CAFE_1234)
@@ -156,7 +154,12 @@ mod tests {
     fn g_address_has_correct_length() {
         let mut rng = seeded();
         let addr = random_valid_address(AddressKind::G, &mut rng);
-        assert_eq!(addr.len(), 56, "G address must be 56 chars, got {}", addr.len());
+        assert_eq!(
+            addr.len(),
+            56,
+            "G address must be 56 chars, got {}",
+            addr.len()
+        );
         assert!(addr.starts_with('G'), "G address must start with 'G'");
     }
 
@@ -164,7 +167,12 @@ mod tests {
     fn m_address_has_correct_length() {
         let mut rng = seeded();
         let addr = random_valid_address(AddressKind::M, &mut rng);
-        assert_eq!(addr.len(), 69, "M address must be 69 chars, got {}", addr.len());
+        assert_eq!(
+            addr.len(),
+            69,
+            "M address must be 69 chars, got {}",
+            addr.len()
+        );
         assert!(addr.starts_with('M'), "M address must start with 'M'");
     }
 
@@ -172,7 +180,12 @@ mod tests {
     fn c_address_has_correct_length() {
         let mut rng = seeded();
         let addr = random_valid_address(AddressKind::C, &mut rng);
-        assert_eq!(addr.len(), 56, "C address must be 56 chars, got {}", addr.len());
+        assert_eq!(
+            addr.len(),
+            56,
+            "C address must be 56 chars, got {}",
+            addr.len()
+        );
         assert!(addr.starts_with('C'), "C address must start with 'C'");
     }
 
@@ -218,10 +231,10 @@ mod tests {
         // correctly, exercising the full range that the spec mandates.
         for id in [0u64, 1, u64::MAX / 2, u64::MAX - 1, u64::MAX] {
             let key = [0u8; 32];
-            // fixed key for reproducibility
+            // fixed key for reproducibility; M payload is key followed by ID.
             let mut body = Vec::with_capacity(40);
-            body.extend_from_slice(&id.to_be_bytes());
             body.extend_from_slice(&key);
+            body.extend_from_slice(&id.to_be_bytes());
             let addr = build_strkey(VERSION_M, &body);
             let parsed = prism_core::address::parse(&addr)
                 .unwrap_or_else(|e| panic!("boundary id {id} failed: {e}"));
