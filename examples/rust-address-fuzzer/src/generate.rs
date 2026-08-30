@@ -106,7 +106,7 @@ pub fn random_valid_address(kind: AddressKind, rng: &mut impl Rng) -> String {
             let mut key = [0u8; 32];
             rng.fill(&mut key);
 
-            // SEP-0023 MuxedAccount body = ed25519_key(32) || muxed_id_BE(8)
+            // M payload body = ed25519_key(32) || muxed_id_BE(8)
             let mut body = Vec::with_capacity(40);
             body.extend_from_slice(&key);
             body.extend_from_slice(&muxed_id.to_be_bytes());
@@ -231,7 +231,7 @@ mod tests {
         // correctly, exercising the full range that the spec mandates.
         for id in [0u64, 1, u64::MAX / 2, u64::MAX - 1, u64::MAX] {
             let key = [0u8; 32];
-            // fixed key for reproducibility
+            // fixed key for reproducibility; M payload is key followed by ID.
             let mut body = Vec::with_capacity(40);
             body.extend_from_slice(&key);
             body.extend_from_slice(&id.to_be_bytes());

@@ -3,13 +3,16 @@ mod mutators;
 mod parse;
 mod report;
 
+use std::any::Any;
 use std::io::{self, BufRead};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::Parser as ClapParser;
 use prism_core::address::AddressKind;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+
+const FINDINGS_DIR: &str = "findings";
 
 #[derive(ClapParser, Debug)]
 #[command(
@@ -18,7 +21,7 @@ use rand::{Rng, SeedableRng};
     about = "Fuzz-tests the prism-core Stellar address parser"
 )]
 struct Cli {
-    /// Generate N random strings and parse each one
+    /// Generate N valid seeds, mutate each one, and parse each mutation
     #[arg(long, value_name = "N", conflicts_with_all = ["corpus", "stdin_mode"])]
     random: Option<usize>,
 
@@ -61,175 +64,169 @@ fn main() {
     }
 
     let seed = cli.seed.unwrap_or_else(|| rand::thread_rng().gen());
-    let mut rng: StdRng = StdRng::seed_from_u64(seed);
+    let mut rng = StdRng::seed_from_u64(seed);
+    let findings_dir = Path::new(FINDINGS_DIR);
 
     if cli.verbose {
         eprintln!("PRNG seed: {seed}");
     }
 
     let mut stats = if let Some(n) = cli.random {
-        let max = cli.max_iterations.unwrap_or(n);
-        run_random(&mut rng, max.min(n), cli.verbose)
+        let max = cli.max_iterations.unwrap_or(n).min(n);
+        run_random(&mut rng, max, seed, cli.verbose, findings_dir)
     } else if let Some(path) = cli.corpus {
-        run_corpus(&path, cli.verbose, cli.max_iterations)
+        run_corpus(&path, cli.verbose, cli.max_iterations, seed, findings_dir)
     } else {
-        run_stdin(cli.verbose, cli.max_iterations)
+        run_stdin(cli.verbose, cli.max_iterations, seed, findings_dir)
     };
 
     stats.report.inputs_run = stats.total;
-
     eprintln!(
         "Done – {} inputs | {} ok | {} err | {} findings",
-        stats.total, stats.ok, stats.err, stats.report.findings_count
+        stats.total,
+        stats.ok,
+        stats.err,
+        stats.report.findings.len()
     );
-
     stats.report.print_json();
 
-    if stats.report.findings_count > 0 || stats.report.divergences > 0 {
+    if !stats.report.findings.is_empty() || stats.report.divergences > 0 {
         std::process::exit(1);
     }
 }
 
-fn run_random(rng: &mut StdRng, n: usize, verbose: bool) -> Stats {
+fn run_random(rng: &mut StdRng, n: usize, seed: u64, verbose: bool, findings_dir: &Path) -> Stats {
     let mut stats = Stats::default();
-    for i in 0..n {
-        // Every 4th input is a valid seed address so the fuzzer exercises the
-        // boundary of validity rather than spending all its budget on obvious
-        // garbage.  The other 3 out of 4 are random strings as before.
-        let input = if i % 4 == 0 {
-            let kind = match i % 12 {
-                0 => AddressKind::G,
-                4 => AddressKind::M,
-                _ => AddressKind::C,
-            };
-            generate::random_valid_address(kind, rng)
-        } else {
-            random_string(rng)
+    for iteration in 0..n {
+        let kind = match iteration % 3 {
+            0 => AddressKind::G,
+            1 => AddressKind::M,
+            _ => AddressKind::C,
         };
-        fuzz_one(&input, verbose, &mut stats);
-        fuzz_checksum_corruption(&input, rng, verbose, &mut stats);
+        let base = generate::random_valid_address(kind, rng);
+        let (mutator, input) = mutate(&base, rng);
+        fuzz_one(
+            &input,
+            mutator,
+            iteration,
+            seed,
+            verbose,
+            &mut stats,
+            findings_dir,
+        );
     }
     stats
 }
 
-fn run_corpus(path: &PathBuf, verbose: bool, max_iters: Option<usize>) -> Stats {
-    let file = std::fs::File::open(path).unwrap_or_else(|e| {
-        eprintln!("error: cannot open corpus file {}: {e}", path.display());
+fn mutate<'a>(base: &str, rng: &mut impl Rng) -> (&'a str, String) {
+    match rng.gen_range(0..3) {
+        0 => ("truncate", mutators::length::truncate(base, rng)),
+        1 => ("pad", mutators::length::pad(base, rng)),
+        _ => match mutators::version::swap_version_byte(base, rng) {
+            Some(result) => ("swap_version_byte", result.mutated),
+            None => ("identity", base.to_owned()),
+        },
+    }
+}
+
+fn run_corpus(
+    path: &Path,
+    verbose: bool,
+    max_iters: Option<usize>,
+    seed: u64,
+    findings_dir: &Path,
+) -> Stats {
+    let file = std::fs::File::open(path).unwrap_or_else(|error| {
+        eprintln!("error: cannot open corpus file {}: {error}", path.display());
         std::process::exit(2);
     });
     let mut rng = StdRng::seed_from_u64(0xC0DE_5EED);
     let mut stats = Stats::default();
-    for (i, line) in io::BufReader::new(file).lines().enumerate() {
-        if let Some(m) = max_iters {
-            if i >= m {
-                break;
-            }
+    for (iteration, line) in io::BufReader::new(file).lines().enumerate() {
+        if max_iters.is_some_and(|max| iteration >= max) {
+            break;
         }
-        let input = line.unwrap_or_default();
-        fuzz_one(&input, verbose, &mut stats);
-        fuzz_checksum_corruption(&input, &mut rng, verbose, &mut stats);
+        fuzz_one(
+            &line.unwrap_or_default(),
+            "corpus",
+            iteration,
+            seed,
+            verbose,
+            &mut stats,
+            findings_dir,
+        );
     }
     stats
 }
 
-fn run_stdin(verbose: bool, max_iters: Option<usize>) -> Stats {
-    let mut rng = StdRng::seed_from_u64(0xC0DE_5EED);
+fn run_stdin(verbose: bool, max_iters: Option<usize>, seed: u64, findings_dir: &Path) -> Stats {
     let mut stats = Stats::default();
-    for (i, line) in io::stdin().lock().lines().enumerate() {
-        if let Some(m) = max_iters {
-            if i >= m {
-                break;
-            }
+    for (iteration, line) in io::stdin().lock().lines().enumerate() {
+        if max_iters.is_some_and(|max| iteration >= max) {
+            break;
         }
-        let input = line.unwrap_or_default();
-        fuzz_one(&input, verbose, &mut stats);
-        fuzz_checksum_corruption(&input, &mut rng, verbose, &mut stats);
+        fuzz_one(
+            &line.unwrap_or_default(),
+            "stdin",
+            iteration,
+            seed,
+            verbose,
+            &mut stats,
+            findings_dir,
+        );
     }
     stats
 }
 
-fn fuzz_one(input: &str, verbose: bool, stats: &mut Stats) {
+fn fuzz_one(
+    input: &str,
+    mutator: &str,
+    iteration: usize,
+    seed: u64,
+    verbose: bool,
+    stats: &mut Stats,
+    findings_dir: &Path,
+) {
     stats.total += 1;
-    let input_owned = input.to_owned();
-    let res = std::panic::catch_unwind(|| parse::parse(&input_owned));
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| parse::parse(input)));
 
-    match res {
-        Ok(Ok(addr)) => {
+    match result {
+        Ok(Ok(address)) => {
             stats.ok += 1;
             if verbose {
-                eprintln!("OK   {:?}  ← {input:?}", addr.kind());
+                eprintln!("OK   {:?}  ← {input:?}", address.kind());
             }
         }
-        Ok(Err(e)) => {
+        Ok(Err(error)) => {
             stats.err += 1;
             if verbose {
-                eprintln!("ERR  {e:?}  ← {input:?}");
+                eprintln!("ERR  {error:?}  ← {input:?}");
             }
         }
-        Err(_) => {
+        Err(payload) => {
             stats.panics += 1;
-            stats.report.findings_count += 1;
-            eprintln!("PANIC  ← {input:?}");
-            let _ = std::fs::write("reproducer.txt", input);
+            let panic_message = panic_message(payload.as_ref());
+            eprintln!("PANIC [{mutator}] at iteration {iteration} ← {input:?}: {panic_message}");
+            stats.report.record_finding(
+                report::Finding {
+                    input: input.to_owned(),
+                    mutator: mutator.to_owned(),
+                    panic_message,
+                    seed,
+                    iteration,
+                },
+                findings_dir,
+            );
         }
     }
 }
 
-/// Flip bits in the trailing CRC-16 of `input` and assert the parser rejects
-/// the result as `InvalidChecksum`.  Coincidentally-valid CRCs are skipped
-/// so they are not logged as false-positive findings.
-fn fuzz_checksum_corruption(input: &str, rng: &mut StdRng, verbose: bool, stats: &mut Stats) {
-    let (mutated, check, finding) = mutators::checksum::fuzz_one(input, rng);
-    match check {
-        mutators::checksum::ChecksumCheck::SkippedValidChecksum => {
-            if verbose {
-                eprintln!("SKIP checksum still valid  ← {mutated:?}");
-            }
-        }
-        mutators::checksum::ChecksumCheck::RejectedChecksum
-        | mutators::checksum::ChecksumCheck::RejectedOther => {
-            stats.total += 1;
-            stats.err += 1;
-            if verbose {
-                eprintln!("ERR  checksum  ← {mutated:?}");
-            }
-        }
-        mutators::checksum::ChecksumCheck::Accepted => {
-            stats.total += 1;
-            stats.ok += 1;
-            if let Some(finding) = finding {
-                stats.report.record_finding(finding);
-            }
-        }
-        mutators::checksum::ChecksumCheck::Panicked => {
-            stats.total += 1;
-            stats.panics += 1;
-            if let Some(finding) = finding {
-                stats.report.record_finding(finding);
-            }
-        }
-    }
-}
-
-const STRKEY_ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-
-fn random_string(rng: &mut StdRng) -> String {
-    if rng.gen_bool(0.80) {
-        let prefix = match rng.gen_range(0u8..3) {
-            0 => 'G',
-            1 => 'M',
-            _ => 'C',
-        };
-        let target_len: usize = if prefix == 'M' { 69 } else { 56 };
-        let len = target_len.saturating_add_signed(rng.gen_range(-4isize..=4));
-        let body: String = (0..len.saturating_sub(1))
-            .map(|_| STRKEY_ALPHABET[rng.gen_range(0..STRKEY_ALPHABET.len())] as char)
-            .collect();
-        format!("{prefix}{body}")
+fn panic_message(payload: &(dyn Any + Send)) -> String {
+    if let Some(message) = payload.downcast_ref::<String>() {
+        message.clone()
+    } else if let Some(message) = payload.downcast_ref::<&str>() {
+        (*message).to_owned()
     } else {
-        let len = rng.gen_range(0..=128);
-        (0..len)
-            .map(|_| rng.gen_range(0x20u8..=0x7e) as char)
-            .collect()
+        "unknown panic payload".to_owned()
     }
 }

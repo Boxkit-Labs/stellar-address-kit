@@ -28,6 +28,8 @@ export type RoutingResult = {
   };
 };
 
+export type MemoRequirementFetcher = (baseAccount: string) => Promise<boolean>;
+
 export function routingIdAsBigInt(
   routingId: string | bigint | null
 ): bigint | null {
