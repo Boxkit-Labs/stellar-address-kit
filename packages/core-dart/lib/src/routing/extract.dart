@@ -261,7 +261,34 @@ RoutingResult extractRoutingSync(RoutingInput input) {
 ///
 /// Currently delegates to [extractRoutingSync]; when async capabilities
 /// are added this function will perform the additional checks.
-Future<RoutingResult> extractRouting(RoutingInput input) async {
-  return extractRoutingSync(input);
-}
+typedef MemoRequirementFetcher = Future<bool> Function(String baseAccount);
 
+/// Performs routing extraction and optionally checks a destination's SEP-0029
+/// memo requirement. Fetch failures fail open to preserve parser behavior.
+Future<RoutingResult> extractRouting(
+  RoutingInput input, {
+  MemoRequirementFetcher? fetchMemoRequirement,
+}) async {
+  final result = extractRoutingSync(input);
+  if (fetchMemoRequirement == null ||
+      result.destinationBaseAccount == null ||
+      result.id != null ||
+      result.destinationError != null) {
+    return result;
+  }
+
+  try {
+    if (await fetchMemoRequirement(result.destinationBaseAccount!)) {
+      return RoutingResult(
+        source: result.source,
+        id: result.id,
+        destinationBaseAccount: result.destinationBaseAccount,
+        destinationError: result.destinationError,
+        warnings: [...result.warnings, RoutingWarning.missingRequiredMemo],
+      );
+    }
+  } catch (_) {
+    // Network/configuration failures must not change the synchronous result.
+  }
+  return result;
+}

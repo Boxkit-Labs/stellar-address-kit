@@ -19,6 +19,7 @@ const (
 	WarnUnsupportedMemoType    WarningCode = "UNSUPPORTED_MEMO_TYPE"
 	WarnInvalidDestination     WarningCode = "INVALID_DESTINATION"
 	WarnSanitizedHiddenChars   WarningCode = "SANITIZED_HIDDEN_CHARS"
+	WarnMissingRequiredMemo    WarningCode = "MISSING_REQUIRED_MEMO"
 )
 
 type Warning struct {
