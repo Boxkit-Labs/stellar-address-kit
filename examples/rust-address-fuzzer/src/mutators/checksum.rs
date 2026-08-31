@@ -18,7 +18,6 @@ use rand::Rng;
 use prism_core::address::ParseError;
 
 use crate::parse;
-use crate::report::Finding;
 
 // ── Encode / decode helpers (same alphabet and CRC as prism-core) ─────────────
 
@@ -169,29 +168,15 @@ pub fn check_corrupted_address(mutated: &str) -> ChecksumCheck {
     }
 }
 
-/// Apply [`corrupt_checksum`], classify the result, and build a [`Finding`]
-/// when the parser accepts the corrupted address or panics.
+/// Apply [`corrupt_checksum`] and classify the result.
 ///
-/// Returns `None` for skips and clean rejections; `Some(finding)` when the
-/// parser misbehaved.
-pub fn fuzz_one(addr: &str, rng: &mut impl Rng) -> (String, ChecksumCheck, Option<Finding>) {
+/// Callers must treat [`ChecksumCheck::Accepted`] and
+/// [`ChecksumCheck::Panicked`] as findings.  [`ChecksumCheck::SkippedValidChecksum`]
+/// is a coincidentally-valid CRC and must not be logged as a false positive.
+pub fn fuzz_one(addr: &str, rng: &mut impl Rng) -> (String, ChecksumCheck) {
     let mutated = corrupt_checksum(addr, rng);
     let check = check_corrupted_address(&mutated);
-    let finding = match &check {
-        ChecksumCheck::Accepted => Some(Finding {
-            input: mutated.clone(),
-            mutator: "corrupt_checksum".to_string(),
-            message: "parser accepted an address whose CRC-16 does not match the payload"
-                .to_string(),
-        }),
-        ChecksumCheck::Panicked => Some(Finding {
-            input: mutated.clone(),
-            mutator: "corrupt_checksum".to_string(),
-            message: "parser panicked on a checksum-corrupted address".to_string(),
-        }),
-        _ => None,
-    };
-    (mutated, check, finding)
+    (mutated, check)
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -432,12 +417,11 @@ mod tests {
         let valid_c = valid_c();
         for addr in [VALID_G, VALID_M, valid_c.as_str()] {
             for _ in 0..500 {
-                let (_mutated, check, finding) = fuzz_one(addr, &mut rng);
+                let (_mutated, check) = fuzz_one(addr, &mut rng);
                 assert!(
                     !check.is_finding(),
                     "checksum corruption of a valid address must not be a finding: {check:?}"
                 );
-                assert!(finding.is_none());
             }
         }
     }
@@ -460,9 +444,9 @@ mod tests {
         for _ in 0..100 {
             for &kind in &[AddressKind::G, AddressKind::M, AddressKind::C] {
                 let addr = random_valid_address(kind, &mut rng);
-                let (_mutated, check, finding) = fuzz_one(&addr, &mut rng);
+                let (_mutated, check) = fuzz_one(&addr, &mut rng);
                 assert!(
-                    finding.is_none(),
+                    !check.is_finding(),
                     "finding on generated {kind:?}: {check:?}"
                 );
                 assert!(

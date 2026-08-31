@@ -32,16 +32,6 @@ impl Report {
         self.findings.push(finding);
     }
 
-    /// Record a finding and persist a one-line reproducer for replay.
-    pub fn record_finding(&mut self, finding: Finding) {
-        self.findings_count += 1;
-        eprintln!(
-            "FINDING [{}] {}  ← {:?}",
-            finding.mutator, finding.message, finding.input
-        );
-        let _ = std::fs::write("reproducer.txt", &finding.input);
-    }
-
     pub fn print_json(&self) {
         println!(
             "{{\n  \"inputs_run\": {},\n  \"findings_count\": {},\n  \"divergences\": {}\n}}",
