@@ -1,4 +1,4 @@
-name: ci-go
+name: ci-g
 
 on:
   pull_request:
@@ -25,11 +25,11 @@ jobs:
       - name: Sanitize input (hidden control chars and whitespace)
         run: |
           # Fail if Go files contain hidden control characters or trailing whitespace
-          if grep -rP '[\x00-\08\x0B-\x1F\x7F]' packages/core-go --include='*.go' >/dev/null; then
+          if grep -rP '[\x00-\x08\x0B-\x1F\x7F]' packages/core-go --include='*.go' >/dev/null; then
             echo "::error::Hidden control characters found in Go source files. Remove or replace them."
             exit 1
           fi
-          if grep -rP '[\t]+\$' packages/core-go --include='*.go' >/dev/null; then
+          if grep -rP '[ \t]+$' packages/core-go --include='*.go' >/dev/null; then
             echo "::error::Trailing whitespace found in Go source files. Remove it."
             exit 1
           fi
