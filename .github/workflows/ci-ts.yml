@@ -1,5 +1,4 @@
 name: ci-ts
-
 on:
   pull_request:
     paths:
@@ -27,4 +26,4 @@ jobs:
           node-version: 20
           cache: "pnpm"
       - run: pnpm install
-      - run: pnpm --filter stellar-address-kit test
+      - run: pnpm --filter ./packages/core-ts test
