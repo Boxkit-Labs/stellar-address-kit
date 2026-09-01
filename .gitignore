@@ -27,6 +27,7 @@ mediafiles/
 *.egg-info/
 *.egg
 dist/
+temp_auto_push.bat
 build/
 .eggs/
 pip-wheel-metadata/
@@ -51,9 +52,11 @@ fuzz/corpus/
 fuzz/artifacts/
 
 # ─── Editors & OS ────────────────────────────────────────────────────────────
-.vscode/
 .idea/
 *.suo
 *.user
 .DS_Store
 Thumbs.db
+.gitignore
+branch_structure.json
+config.bat

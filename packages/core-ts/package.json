@@ -12,7 +12,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/cli.ts --format cjs,esm --dts",
+    "build": "node init && tsup src/index.ts src/cli.ts --format cjs,esm --dts",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/**/*.ts"

@@ -1,11 +1,11 @@
 {
   "name": "@stellar-address-kit/core-ts",
   "version": "0.1.0",
-  "description": "Stellar Address Kit – TypeScript routing extraction (M-address / SEP-0023)",
+  "description": "Stellar Address Kit \u2013 TypeScript routing extraction (M-address / SEP-0023)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "node init && tsc",
     "test": "jest --runInBand --forceExit"
   },
   "dependencies": {
@@ -21,6 +21,8 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "testMatch": ["**/tests/**/*.test.ts"]
+    "testMatch": [
+      "**/tests/**/*.test.ts"
+    ]
   }
 }
