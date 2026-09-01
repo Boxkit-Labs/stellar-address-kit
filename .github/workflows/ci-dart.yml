@@ -6,13 +6,14 @@ on:
       - "packages/core-dart/**"
       - "spec/**"
     # `verify-parity` owns this file's CI surface; skip here to avoid
-    # duplicate Runs on vectors-only PRs.
+    # duplicate Runs on vectors-only PRS.
     paths-ignore:
       - "spec/vectors.json"
-    # Note: paths + paths-ignore combine as an AND across all changed files.
-    # If a PR changes spec/vectors.json *together with* packages/core-dart/**,
-    # this workflow is skipped; verify-parity.yml still runs the identical
-    # commands, so functional coverage is preserved under a different check.
+
+  # Note: paths + paths-ignore combine as an AND across all changed files.
+  # If a PR changes spec/vectors.json *together with* packages/core-dart/**,
+  # this workflow is skipped; verify-parity.yml still runs the identical
+  # commands, so functional coverage is preserved under a different check.
 
 jobs:
   test:
@@ -21,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Sanitize hidden control characters and whitespace
         run: |
-          find spec packages/core-dart -type f \ (-name '*.dart' -o -*.json' -o -*.yaml' -o -*.md' \) -exec perl -pi -e 's/\r/\n/g; s/[^\p{C}\t\n]//g; s/[ \t]+$//' {} +
+          find spec packages/core-dart -type f \( -name '*.dart' -o -name '*.json' -o -name '*.yaml' -o -name '*.md' \) -exec perl -CSD -pi -e 's/\r\n/\n/g; s/\r/\n/g; s/[^\P{C}\t\n]//g; s/[ \t]+$//' {} +
       - uses: dart-lang/setup-dart@v1
       - id: setup-chrome
         uses: browser-actions/setup-chrome@v1
@@ -29,4 +30,4 @@ jobs:
       - run: cd packages/core-dart && dart test
       - run: cd packages/core-dart && dart test test/web_compat --platform chrome
         env:
-          CHROME_EXECUTABLE: $={{ steps.setup-chrome.outputs.chrome-path }}
+          CHROME_EXECUTABLE: $ {{ steps.setup-chrome.outputs.chrome-path }}
