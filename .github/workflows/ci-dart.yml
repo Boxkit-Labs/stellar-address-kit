@@ -6,7 +6,7 @@ on:
       - "packages/core-dart/**"
       - "spec/**"
     # `verify-parity` owns this file's CI surface; skip here to avoid
-    # duplicate runs on vectors-only PRs.
+    # duplicate Runs on vectors-only PRs.
     paths-ignore:
       - "spec/vectors.json"
     # Note: paths + paths-ignore combine as an AND across all changed files.
@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Sanitize hidden control characters and whitespace
+        run: |
+          find spec packages/core-dart -type f \ (-name '*.dart' -o -*.json' -o -*.yaml' -o -*.md' \) -exec perl -pi -e 's/\r/\n/g; s/[^\p{C}\t\n]//g; s/[ \t]+$//' {} +
       - uses: dart-lang/setup-dart@v1
       - id: setup-chrome
         uses: browser-actions/setup-chrome@v1
@@ -26,4 +29,4 @@ jobs:
       - run: cd packages/core-dart && dart test
       - run: cd packages/core-dart && dart test test/web_compat --platform chrome
         env:
-          CHROME_EXECUTABLE: ${{ steps.setup-chrome.outputs.chrome-path }}
+          CHROME_EXECUTABLE: $={{ steps.setup-chrome.outputs.chrome-path }}
