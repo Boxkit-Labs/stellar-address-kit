@@ -119,13 +119,17 @@ fn run_random(rng: &mut StdRng, n: usize, seed: u64, verbose: bool, findings_dir
 }
 
 fn mutate<'a>(base: &str, rng: &mut impl Rng) -> (&'a str, String) {
-    match rng.gen_range(0..3) {
+    match rng.gen_range(0..4) {
         0 => ("truncate", mutators::length::truncate(base, rng)),
         1 => ("pad", mutators::length::pad(base, rng)),
-        _ => match mutators::version::swap_version_byte(base, rng) {
+        2 => match mutators::version::swap_version_byte(base, rng) {
             Some(result) => ("swap_version_byte", result.mutated),
             None => ("identity", base.to_owned()),
         },
+        _ => (
+            "corrupt_checksum",
+            mutators::checksum::corrupt_checksum(base, rng),
+        ),
     }
 }
 
@@ -194,6 +198,25 @@ fn fuzz_one(
             stats.ok += 1;
             if verbose {
                 eprintln!("OK   {:?}  ← {input:?}", address.kind());
+            }
+            // A checksum-corrupted address that still parses is a finding,
+            // unless the flip accidentally restored a valid CRC (skip).
+            if mutator == "corrupt_checksum" && !mutators::checksum::has_valid_crc(input) {
+                let panic_message =
+                    "parser accepted an address whose CRC-16 does not match the payload".to_owned();
+                eprintln!(
+                    "FINDING [{mutator}] at iteration {iteration} ← {input:?}: {panic_message}"
+                );
+                stats.report.record_finding(
+                    report::Finding {
+                        input: input.to_owned(),
+                        mutator: mutator.to_owned(),
+                        panic_message,
+                        seed,
+                        iteration,
+                    },
+                    findings_dir,
+                );
             }
         }
         Ok(Err(error)) => {
