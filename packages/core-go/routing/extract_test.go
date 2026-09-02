@@ -331,6 +331,32 @@ func TestExtractRouting_ContractSourceClearsRoutingState(t *testing.T) {
 	})
 }
 
+func TestExtractRouting_SanitizedHiddenChars(t *testing.T) {
+	t.Run("sanitizes-zero-width-and-whitespace", func(t *testing.T) {
+		dirtyG := "\u200B\uFEFF  \r\n" + testBaseG + " \t\u200D\u2060\n"
+		result := ExtractRouting(RoutingInput{
+			Destination: dirtyG,
+			MemoType:    "id",
+			MemoValue:   "100",
+		})
+
+		expected := RoutingResult{
+			DestinationBaseAccount: testBaseG,
+			RoutingID:              NewRoutingID("100"),
+			RoutingSource:          "memo",
+			Warnings: []address.Warning{
+				{
+					Code:     address.WarnSanitizedHiddenChars,
+					Severity: "info",
+					Message:  "Destination address contained non-printable characters or whitespace that were stripped.",
+				},
+			},
+		}
+
+		assertRoutingResult(t, result, expected)
+	})
+}
+
 func assertRoutingResult(t *testing.T, got, want RoutingResult) {
 	t.Helper()
 

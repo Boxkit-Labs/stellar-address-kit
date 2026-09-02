@@ -17,6 +17,7 @@ export type WarningCode =
   | "MEMO_ID_INVALID_FORMAT"
   | "UNSUPPORTED_MEMO_TYPE"
   | "INVALID_DESTINATION"
+  | "SANITIZED_HIDDEN_CHARS"
   | "MISSING_REQUIRED_MEMO";
 
 export type Warning =

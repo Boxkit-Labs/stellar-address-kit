@@ -281,3 +281,82 @@ describe("multi-warning: NON_CANONICAL_ROUTING_ID + MEMO_ID_INVALID_FORMAT", () 
     }
   });
 });
+
+// ─── 8. SANITIZED_HIDDEN_CHARS ────────────────────────────────────────────────
+
+describe("SANITIZED_HIDDEN_CHARS warning & hidden character sanitization", () => {
+  it("sanitizes zero-width spaces, BOM, and whitespace from G-address", () => {
+    const dirtyG = `\u200B\uFEFF  \r\n${G_ADDRESS} \t\u200D\u2060\n`;
+    const result = extractRouting(input(dirtyG, "id", "100"));
+
+    expect(result.destinationBaseAccount).toBe(G_ADDRESS);
+    expect(result.routingId).toBe("100");
+    expect(result.routingSource).toBe("memo");
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].code).toBe("SANITIZED_HIDDEN_CHARS");
+    expect(result.warnings[0].severity).toBe("info");
+    expect(result.warnings[0].message).toContain("non-printable characters or whitespace");
+  });
+
+  it("sanitizes zero-width joiners and formatting characters from M-address", () => {
+    const dirtyM = `\u200C${M_ADDRESS}\u200E\u200F\r\n`;
+    const result = extractRouting(input(dirtyM));
+
+    expect(result.destinationBaseAccount).toBe(G_ADDRESS);
+    expect(result.routingId).toBe(ROUTING_ID);
+    expect(result.routingSource).toBe("muxed");
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].code).toBe("SANITIZED_HIDDEN_CHARS");
+    expect(result.warnings[0].severity).toBe("info");
+  });
+
+  it("sanitizes ASCII control characters and bidirectional overrides", () => {
+    const dirtyG = `\x00\x07\x1B\u202A${G_ADDRESS}\u202E\x7F`;
+    const result = extractRouting(input(dirtyG));
+
+    expect(result.destinationBaseAccount).toBe(G_ADDRESS);
+    expect(result.routingSource).toBe("none");
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].code).toBe("SANITIZED_HIDDEN_CHARS");
+  });
+
+  it("emits multiple warnings when hidden chars are sanitized and memo conflicts with M-address", () => {
+    const dirtyM = `  \u200B${M_ADDRESS}\n`;
+    const result = extractRouting(input(dirtyM, "id", "99999"));
+
+    expect(result.warnings).toHaveLength(2);
+    expect(result.warnings[0].code).toBe("SANITIZED_HIDDEN_CHARS");
+    expect(result.warnings[0].severity).toBe("info");
+    expect(result.warnings[1].code).toBe("MEMO_PRESENT_WITH_MUXED");
+    expect(result.warnings[1].severity).toBe("warn");
+  });
+
+  it("filters out info-level SANITIZED_HIDDEN_CHARS when minSeverityLevel is 'warn'", () => {
+    const dirtyM = `  \u200B${M_ADDRESS}\n`;
+    const result = extractRouting({
+      ...input(dirtyM, "id", "99999"),
+      minSeverityLevel: "warn",
+    });
+
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].code).toBe("MEMO_PRESENT_WITH_MUXED");
+  });
+
+  it("does not emit SANITIZED_HIDDEN_CHARS for clean addresses", () => {
+    const result = extractRouting(input(G_ADDRESS, "id", "100"));
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  it("throws ExtractRoutingError when input contains only whitespace and hidden characters", () => {
+    expect(() =>
+      extractRouting(input("  \u200B\uFEFF\t\r\n  "))
+    ).toThrow(ExtractRoutingError);
+  });
+
+  it("throws ExtractRoutingError when sanitized address has invalid prefix", () => {
+    expect(() =>
+      extractRouting(input("\u200B  XAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI  "))
+    ).toThrow(ExtractRoutingError);
+  });
+});
+

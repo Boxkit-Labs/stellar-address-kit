@@ -3,10 +3,44 @@ package routing
 import (
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/Boxkit-Labs/stellar-address-kit/packages/core-go/address"
 	"github.com/Boxkit-Labs/stellar-address-kit/packages/core-go/muxed"
 )
+
+func isHiddenOrWhitespace(r rune) bool {
+	if unicode.IsSpace(r) || unicode.IsControl(r) {
+		return true
+	}
+	switch {
+	case r == 0xFEFF, r == 0x00AD:
+		return true
+	case r >= 0x200B && r <= 0x200F:
+		return true
+	case r >= 0x2028 && r <= 0x202F:
+		return true
+	case r >= 0x2060 && r <= 0x206F:
+		return true
+	case r >= 0xFFF9 && r <= 0xFFFB:
+		return true
+	}
+	return false
+}
+
+func sanitizeDestination(dest string) (string, bool) {
+	if !strings.ContainsFunc(dest, isHiddenOrWhitespace) {
+		return dest, false
+	}
+	var sb strings.Builder
+	sb.Grow(len(dest))
+	for _, r := range dest {
+		if !isHiddenOrWhitespace(r) {
+			sb.WriteRune(r)
+		}
+	}
+	return sb.String(), true
+}
 
 // normalizeUnsupportedMemoType canonicalizes a memo type string by lower-casing it
 // and stripping underscores and hyphens, then maps it to a known unsupported type.
@@ -59,11 +93,29 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 		}
 	}
 
-	parsed, err := address.Parse(input.Destination)
+	sanitizedDest, wasSanitized := sanitizeDestination(input.Destination)
+
+	initWarnings := func(additional ...address.Warning) []address.Warning {
+		capSize := len(additional)
+		if wasSanitized {
+			capSize++
+		}
+		w := make([]address.Warning, 0, capSize)
+		if wasSanitized {
+			w = append(w, address.Warning{
+				Code:     address.WarnSanitizedHiddenChars,
+				Severity: "info",
+				Message:  "Destination address contained non-printable characters or whitespace that were stripped.",
+			})
+		}
+		return append(w, additional...)
+	}
+
+	parsed, err := address.Parse(sanitizedDest)
 	if err != nil {
 		return RoutingResult{
 			RoutingSource: "none",
-			Warnings:      []address.Warning{},
+			Warnings:      initWarnings(),
 			DestinationError: &DestinationError{
 				Code:    address.ErrUnknownPrefix,
 				Message: err.Error(),
@@ -72,16 +124,18 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 	}
 
 	if parsed.Kind == address.KindC {
+		warnings := initWarnings()
+		warnings = append(warnings, address.Warning{
+			Code:     address.WarnInvalidDestination,
+			Severity: "error",
+			Message:  "C address is not a valid destination",
+			Context: &address.WarningContext{
+				DestinationKind: "C",
+			},
+		})
 		return RoutingResult{
 			RoutingSource: "none",
-			Warnings: []address.Warning{{
-				Code:     address.WarnInvalidDestination,
-				Severity: "error",
-				Message:  "C address is not a valid destination",
-				Context: &address.WarningContext{
-					DestinationKind: "C",
-				},
-			}},
+			Warnings:      warnings,
 		}
 	}
 
@@ -90,7 +144,7 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 		if err != nil {
 			return RoutingResult{
 				RoutingSource: "none",
-				Warnings:      []address.Warning{},
+				Warnings:      initWarnings(),
 				DestinationError: &DestinationError{
 					Code:    address.ErrUnknownPrefix,
 					Message: err.Error(),
@@ -98,9 +152,7 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 			}
 		}
 
-		// Pre-allocate with capacity for existing warnings plus at most one more.
-		warnings := make([]address.Warning, 0, len(parsed.Warnings)+1)
-		warnings = append(warnings, parsed.Warnings...)
+		warnings := initWarnings(parsed.Warnings...)
 		memoValue := stringValue(input.MemoValue)
 
 		// isAllDigits replaces the regex match to avoid heap allocation.
@@ -128,9 +180,7 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 
 	var routingID *RoutingID
 	routingSource := "none"
-	// Pre-allocate with capacity for existing address warnings plus at most two memo warnings.
-	warnings := make([]address.Warning, 0, len(parsed.Warnings)+2)
-	warnings = append(warnings, parsed.Warnings...)
+	warnings := initWarnings(parsed.Warnings...)
 	memoValue := stringValue(input.MemoValue)
 
 	if input.MemoType == "id" {
