@@ -65,6 +65,19 @@ console.log(result.routingId); // "123"
 - **Warning System**: Discriminated unions (TS) or structured objects (Go/Dart) to catch edge cases like numeric `MEMO_TEXT`.
 - **Zero Dependencies**: Core logic is lightweight and has zero external dependencies beyond standard library features.
 
+## Fuzzing (Rust, coverage-guided)
+
+Deep-fuzz entry point over the real parser (`prism-core`):
+
+```sh
+cargo install cargo-fuzz
+rustup toolchain install nightly
+cargo +nightly fuzz run parse
+```
+
+Seeds in `fuzz/corpus/parse/seed_*` are valid G/M/C outputs of the
+`random_valid_address` generator, so a fresh clone starts with a warm corpus.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
