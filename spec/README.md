@@ -35,7 +35,11 @@ Every public function in every implementation MUST be non-throwing for any arbit
 - **Decimal Strings**: Routing IDs MUST be returned as decimal strings.
 - **Leading Zeros**: Routing IDs MUST have leading zeros stripped (except for the value `"0"`), and a `NON_CANONICAL_ROUTING_ID` warning MUST be emitted.
 
-### 4. C-Address Safety
+### 4. Destination Sanitization
+
+Before routing validation, `extractRouting` MUST remove Unicode non-printable and default-ignorable characters (including zero-width and bidirectional controls), then trim surrounding whitespace. If the destination changes, it MUST emit `SANITIZED_HIDDEN_CHARS` with `severity: 'info'` before any later routing warnings.
+
+### 5. C-Address Safety
 
 Contract addresses (`C...`) are valid StrKeys but are **invalid destinations** for classic payment routing. Any `extractRouting` implementation MUST emit an `INVALID_DESTINATION` warning with `severity: 'error'` if a C-address is provided as the destination.
 

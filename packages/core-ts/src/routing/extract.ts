@@ -3,12 +3,29 @@ import { Warning, WarningSeverity } from "../address/types";
 import { parse } from "../address/parse";
 import { AddressParseError } from "../address/errors";
 import { normalizeMemoTextId } from "./memo";
+import { WARNING_MESSAGES } from "./warnings";
 
 const SEVERITY_ORDER: Record<WarningSeverity, number> = {
   info: 0,
   warn: 1,
   error: 2,
 };
+
+// Stellar StrKeys contain printable ASCII only. Strip Unicode characters that
+// cannot be rendered (category C), line/paragraph separators, and default-
+// ignorable code points such as zero-width spaces, bidi controls, variation
+// selectors, and byte-order marks. Surrounding Unicode whitespace is trimmed
+// separately; printable characters inside the address remain invalid input.
+const HIDDEN_OR_NON_PRINTABLE =
+  /[\p{C}\p{Zl}\p{Zp}\p{Default_Ignorable_Code_Point}]/gu;
+
+function sanitizeDestination(destination: string): {
+  destination: string;
+  modified: boolean;
+} {
+  const sanitized = destination.replace(HIDDEN_OR_NON_PRINTABLE, "").trim();
+  return { destination: sanitized, modified: sanitized !== destination };
+}
 
 function filterBySeverity(
   warnings: Warning[],
@@ -32,14 +49,14 @@ export class ExtractRoutingError extends Error {
  * Only G-addresses and M-addresses are valid routing targets.
  * Throws ExtractRoutingError for anything that fails this check.
  */
-function assertRoutableAddress(destination: string): void {
+function assertRoutableAddress(destination: unknown): asserts destination is string {
   if (!destination || typeof destination !== "string") {
     throw new ExtractRoutingError(
       "Invalid input: destination must be a non-empty string."
     );
   }
 
-  const prefix = destination.trim()[0]?.toUpperCase();
+  const prefix = destination[0]?.toUpperCase();
   if (prefix !== "G" && prefix !== "M") {
     throw new ExtractRoutingError(
       `Invalid destination: expected a G or M address, got "${destination}".`
@@ -58,20 +75,36 @@ function assertRoutableAddress(destination: string): void {
  * @returns A result containing the base account, routing ID, source, and any warnings.
  */
 export function extractRouting(input: RoutingInput): RoutingResult {
-  assertRoutableAddress(input.destination);
+  const rawDestination = input?.destination;
+  if (typeof rawDestination !== "string") {
+    assertRoutableAddress(rawDestination);
+  }
+
+  const sanitized = sanitizeDestination(rawDestination);
+  const destination = sanitized.destination;
+  assertRoutableAddress(destination);
 
   const minSeverity = input.minSeverityLevel ?? "info";
+  const sanitizationWarnings: Warning[] = sanitized.modified
+    ? [
+        {
+          code: "SANITIZED_HIDDEN_CHARS",
+          severity: "info",
+          message: WARNING_MESSAGES.SANITIZED_HIDDEN_CHARS,
+        },
+      ]
+    : [];
 
   let parsed;
   try {
-    parsed = parse(input.destination);
+    parsed = parse(destination);
   } catch (error) {
     if (error instanceof AddressParseError) {
       return {
         destinationBaseAccount: null,
         routingId: null,
         routingSource: "none",
-        warnings: [],
+        warnings: filterBySeverity(sanitizationWarnings, minSeverity),
         destinationError: {
           code: error.code,
           message: error.message,
@@ -86,12 +119,15 @@ export function extractRouting(input: RoutingInput): RoutingResult {
       destinationBaseAccount: null,
       routingId: null,
       routingSource: "none",
-      warnings: [],
+      warnings: filterBySeverity(sanitizationWarnings, minSeverity),
     };
   }
 
   if (parsed.kind === "C") {
-    const warnings: Warning[] = [...parsed.warnings];
+    const warnings: Warning[] = [
+      ...sanitizationWarnings,
+      ...parsed.warnings,
+    ];
 
     warnings.push({
       code: "INVALID_DESTINATION",
@@ -111,7 +147,10 @@ export function extractRouting(input: RoutingInput): RoutingResult {
   }
 
   if (parsed.kind === "M") {
-    const warnings: Warning[] = [...parsed.warnings];
+    const warnings: Warning[] = [
+      ...sanitizationWarnings,
+      ...parsed.warnings,
+    ];
 
     if (
       input.memoType === "id" ||
@@ -142,7 +181,10 @@ export function extractRouting(input: RoutingInput): RoutingResult {
 
   let routingId: string | bigint | null = null;
   let routingSource: "none" | "memo" = "none";
-  const warnings: Warning[] = [...parsed.warnings];
+  const warnings: Warning[] = [
+    ...sanitizationWarnings,
+    ...parsed.warnings,
+  ];
 
   if (input.memoType === "id") {
     const rawValue = input.memoValue ?? "";

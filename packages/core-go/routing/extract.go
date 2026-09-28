@@ -3,10 +3,50 @@ package routing
 import (
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/Boxkit-Labs/stellar-address-kit/packages/core-go/address"
 	"github.com/Boxkit-Labs/stellar-address-kit/packages/core-go/muxed"
 )
+
+const sanitizedHiddenCharsMessage = "Destination was sanitized by removing hidden characters and surrounding whitespace."
+
+// sanitizeDestination removes Unicode characters that are non-printable or
+// intentionally invisible, then trims surrounding Unicode whitespace. Visible
+// characters inside the address are retained so ordinary malformed input is
+// still rejected by the StrKey parser.
+func sanitizeDestination(destination string) (string, bool) {
+	sanitized := strings.Map(func(r rune) rune {
+		if !unicode.IsPrint(r) || isDefaultIgnorable(r) {
+			return -1
+		}
+		return r
+	}, destination)
+	sanitized = strings.TrimSpace(sanitized)
+	return sanitized, sanitized != destination
+}
+
+// unicode.IsPrint excludes control, format, private-use, surrogate, unassigned,
+// line-separator, and paragraph-separator code points. This helper also removes
+// printable characters with the Unicode Default_Ignorable_Code_Point property,
+// including variation selectors and Hangul/Mongolian fillers.
+func isDefaultIgnorable(r rune) bool {
+	switch {
+	case r == 0x034F,
+		r >= 0x115F && r <= 0x1160,
+		r >= 0x17B4 && r <= 0x17B5,
+		r >= 0x180B && r <= 0x180F,
+		r == 0x3164,
+		r >= 0xFE00 && r <= 0xFE0F,
+		r == 0xFFA0,
+		r >= 0x1BCA0 && r <= 0x1BCA3,
+		r >= 0x1D173 && r <= 0x1D17A,
+		r >= 0xE0000 && r <= 0xE0FFF:
+		return true
+	default:
+		return false
+	}
+}
 
 // normalizeUnsupportedMemoType canonicalizes a memo type string by lower-casing it
 // and stripping underscores and hyphens, then maps it to a known unsupported type.
@@ -45,25 +85,37 @@ func normalizeUnsupportedMemoType(memoType string) string {
 // take precedence over any provided memo. Returns a RoutingResult with the decoded
 // state and applicable warnings.
 func ExtractRouting(input RoutingInput) RoutingResult {
+	destination, destinationSanitized := sanitizeDestination(input.Destination)
+	sanitizationWarnings := make([]address.Warning, 0, 1)
+	if destinationSanitized {
+		sanitizationWarnings = append(sanitizationWarnings, address.Warning{
+			Code:     address.WarnSanitizedHiddenChars,
+			Severity: "info",
+			Message:  sanitizedHiddenCharsMessage,
+		})
+	}
+
 	if input.SourceAccount != "" {
 		source, err := address.Parse(input.SourceAccount)
 		if err == nil && source.Kind == address.KindC {
+			warnings := append([]address.Warning{}, sanitizationWarnings...)
+			warnings = append(warnings, address.Warning{
+				Code:     address.WarnContractSenderDetected,
+				Severity: "info",
+				Message:  "Contract source detected. Routing state cleared.",
+			})
 			return RoutingResult{
 				RoutingSource: "none",
-				Warnings: []address.Warning{{
-					Code:     address.WarnContractSenderDetected,
-					Severity: "info",
-					Message:  "Contract source detected. Routing state cleared.",
-				}},
+				Warnings:      warnings,
 			}
 		}
 	}
 
-	parsed, err := address.Parse(input.Destination)
+	parsed, err := address.Parse(destination)
 	if err != nil {
 		return RoutingResult{
 			RoutingSource: "none",
-			Warnings:      []address.Warning{},
+			Warnings:      append([]address.Warning{}, sanitizationWarnings...),
 			DestinationError: &DestinationError{
 				Code:    address.ErrUnknownPrefix,
 				Message: err.Error(),
@@ -72,16 +124,18 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 	}
 
 	if parsed.Kind == address.KindC {
+		warnings := append([]address.Warning{}, sanitizationWarnings...)
+		warnings = append(warnings, address.Warning{
+			Code:     address.WarnInvalidDestination,
+			Severity: "error",
+			Message:  "C address is not a valid destination",
+			Context: &address.WarningContext{
+				DestinationKind: "C",
+			},
+		})
 		return RoutingResult{
 			RoutingSource: "none",
-			Warnings: []address.Warning{{
-				Code:     address.WarnInvalidDestination,
-				Severity: "error",
-				Message:  "C address is not a valid destination",
-				Context: &address.WarningContext{
-					DestinationKind: "C",
-				},
-			}},
+			Warnings:      warnings,
 		}
 	}
 
@@ -90,7 +144,7 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 		if err != nil {
 			return RoutingResult{
 				RoutingSource: "none",
-				Warnings:      []address.Warning{},
+				Warnings:      append([]address.Warning{}, sanitizationWarnings...),
 				DestinationError: &DestinationError{
 					Code:    address.ErrUnknownPrefix,
 					Message: err.Error(),
@@ -99,7 +153,8 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 		}
 
 		// Pre-allocate with capacity for existing warnings plus at most one more.
-		warnings := make([]address.Warning, 0, len(parsed.Warnings)+1)
+		warnings := make([]address.Warning, 0, len(sanitizationWarnings)+len(parsed.Warnings)+1)
+		warnings = append(warnings, sanitizationWarnings...)
 		warnings = append(warnings, parsed.Warnings...)
 		memoValue := stringValue(input.MemoValue)
 
@@ -129,7 +184,8 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 	var routingID *RoutingID
 	routingSource := "none"
 	// Pre-allocate with capacity for existing address warnings plus at most two memo warnings.
-	warnings := make([]address.Warning, 0, len(parsed.Warnings)+2)
+	warnings := make([]address.Warning, 0, len(sanitizationWarnings)+len(parsed.Warnings)+2)
+	warnings = append(warnings, sanitizationWarnings...)
 	warnings = append(warnings, parsed.Warnings...)
 	memoValue := stringValue(input.MemoValue)
 

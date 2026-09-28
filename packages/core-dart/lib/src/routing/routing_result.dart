@@ -65,7 +65,17 @@ class RoutingWarning {
   static const missingRequiredMemo = RoutingWarning(
     code: 'MISSING_REQUIRED_MEMO',
     severity: 'error',
-    message: 'Destination account requires a memo, but no routing ID was provided.',
+    message:
+        'Destination account requires a memo, but no routing ID was provided.',
+  );
+
+  /// Emitted when invisible/non-printable characters or surrounding whitespace
+  /// are removed from the destination before address parsing.
+  static const sanitizedHiddenChars = RoutingWarning(
+    code: 'SANITIZED_HIDDEN_CHARS',
+    severity: 'info',
+    message:
+        'Destination was sanitized by removing hidden characters and surrounding whitespace.',
   );
 
   @override
@@ -180,7 +190,8 @@ final class RoutingResult {
   /// [SafeRoutingId] is the BigInt-backed wrapper that guarantees the exact
   /// value survives parsing, comparison, and JSON serialization on all
   /// platforms, including Flutter Web.
-  SafeRoutingId? get safeId => id == null ? null : SafeRoutingId.fromBigInt(id!);
+  SafeRoutingId? get safeId =>
+      id == null ? null : SafeRoutingId.fromBigInt(id!);
 
   String toDisplayString() {
     switch (source) {

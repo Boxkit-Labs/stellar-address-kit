@@ -5,6 +5,76 @@ import 'routing_result.dart';
 import 'memo.dart';
 import 'safe_routing_id.dart';
 
+final class _SanitizedDestination {
+  final String value;
+  final bool modified;
+
+  const _SanitizedDestination(this.value, this.modified);
+}
+
+/// Removes Unicode control/format/private-use/noncharacter code points and
+/// default-ignorable characters (zero-width spaces, bidi controls, variation
+/// selectors, byte-order marks, and similar), then trims surrounding Unicode
+/// whitespace. Printable characters inside the address are deliberately kept
+/// so malformed StrKeys still fail validation.
+_SanitizedDestination _sanitizeDestination(String destination) {
+  final buffer = StringBuffer();
+  for (final rune in destination.runes) {
+    if (!_isHiddenOrNonPrintable(rune)) {
+      buffer.writeCharCode(rune);
+    }
+  }
+
+  final sanitized = buffer.toString().trim();
+  return _SanitizedDestination(sanitized, sanitized != destination);
+}
+
+bool _isHiddenOrNonPrintable(int rune) {
+  // C0/C1 controls, including NUL, tabs, CR, and LF.
+  if (rune <= 0x001F || (rune >= 0x007F && rune <= 0x009F)) return true;
+
+  // Unicode format controls and default-ignorable code points.
+  if (rune == 0x00AD ||
+      rune == 0x034F ||
+      (rune >= 0x0600 && rune <= 0x0605) ||
+      rune == 0x061C ||
+      rune == 0x06DD ||
+      rune == 0x070F ||
+      (rune >= 0x0890 && rune <= 0x0891) ||
+      rune == 0x08E2 ||
+      (rune >= 0x115F && rune <= 0x1160) ||
+      (rune >= 0x17B4 && rune <= 0x17B5) ||
+      (rune >= 0x180B && rune <= 0x180F) ||
+      (rune >= 0x200B && rune <= 0x200F) ||
+      (rune >= 0x2028 && rune <= 0x202E) ||
+      (rune >= 0x2060 && rune <= 0x206F) ||
+      rune == 0x3164 ||
+      (rune >= 0xFE00 && rune <= 0xFE0F) ||
+      rune == 0xFEFF ||
+      rune == 0xFFA0 ||
+      (rune >= 0xFFF0 && rune <= 0xFFFB) ||
+      rune == 0x110BD ||
+      rune == 0x110CD ||
+      (rune >= 0x13430 && rune <= 0x1345F) ||
+      (rune >= 0x1BCA0 && rune <= 0x1BCA3) ||
+      (rune >= 0x1D173 && rune <= 0x1D17A) ||
+      (rune >= 0xE0000 && rune <= 0xE0FFF)) {
+    return true;
+  }
+
+  // Private-use and noncharacter code points are not printable user input.
+  if ((rune >= 0xE000 && rune <= 0xF8FF) ||
+      (rune >= 0xF0000 && rune <= 0xFFFFD) ||
+      (rune >= 0x100000 && rune <= 0x10FFFD) ||
+      (rune >= 0xFDD0 && rune <= 0xFDEF) ||
+      (rune & 0xFFFF) == 0xFFFE ||
+      (rune & 0xFFFF) == 0xFFFF) {
+    return true;
+  }
+
+  return false;
+}
+
 /// Extracts deposit routing information from a Stellar payment input.
 /// Following the standard priority policy, M-address identifiers take
 /// precedence over any provided memo.
@@ -20,17 +90,24 @@ import 'safe_routing_id.dart';
 /// For future compatibility with async network checks (Federation, SEP-0029),
 /// use [extractRouting] instead.
 RoutingResult extractRoutingSync(RoutingInput input) {
-  final trimmed = input.destination.trim();
-  if (trimmed.isEmpty) {
-    throw const ExtractRoutingException('Invalid input: destination must be a non-empty string.');
-  }
-
-  final prefix = trimmed[0].toUpperCase();
-  if (prefix != 'G' && prefix != 'M') {
-    throw ExtractRoutingException(
-      'Invalid destination: expected a G or M address, got "${input.destination}".',
+  final sanitized = _sanitizeDestination(input.destination);
+  final destination = sanitized.value;
+  if (destination.isEmpty) {
+    throw const ExtractRoutingException(
+      'Invalid input: destination must be a non-empty string.',
     );
   }
+
+  final prefix = destination[0].toUpperCase();
+  if (prefix != 'G' && prefix != 'M') {
+    throw ExtractRoutingException(
+      'Invalid destination: expected a G or M address, got "$destination".',
+    );
+  }
+
+  final sanitizationWarnings = sanitized.modified
+      ? <RoutingWarning>[RoutingWarning.sanitizedHiddenChars]
+      : <RoutingWarning>[];
 
   if (input.sourceAccount != null && input.sourceAccount!.isNotEmpty) {
     try {
@@ -38,7 +115,7 @@ RoutingResult extractRoutingSync(RoutingInput input) {
       if (source.kind == codes.AddressKind.c) {
         return RoutingResult(
           source: RoutingSource.none,
-          warnings: [RoutingWarning.contractSender],
+          warnings: [...sanitizationWarnings, RoutingWarning.contractSender],
         );
       }
     } catch (_) {
@@ -46,12 +123,12 @@ RoutingResult extractRoutingSync(RoutingInput input) {
     }
   }
 
-  final parsed = parse(input.destination);
+  final parsed = parse(destination);
 
   if (parsed.kind == null) {
     return RoutingResult(
       source: RoutingSource.none,
-      warnings: [],
+      warnings: sanitizationWarnings,
       destinationError: parsed.error != null
           ? DestinationError(
               code: parsed.error!.code,
@@ -61,7 +138,7 @@ RoutingResult extractRoutingSync(RoutingInput input) {
     );
   }
 
-  final warnings = <RoutingWarning>[];
+  final warnings = <RoutingWarning>[...sanitizationWarnings];
   for (final w in parsed.warnings) {
     warnings.add(RoutingWarning(
       code: w.code,

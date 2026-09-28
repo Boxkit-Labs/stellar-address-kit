@@ -66,6 +66,9 @@ abstract final class WarningCode {
 
   /// The destination is a smart contract, which is invalid for classic payments.
   static const invalidDestination = 'INVALID_DESTINATION';
+
+  /// Hidden/non-printable characters or surrounding whitespace were removed.
+  static const sanitizedHiddenChars = 'SANITIZED_HIDDEN_CHARS';
 }
 
 /// Represents a warning encountered during address parsing or routing.

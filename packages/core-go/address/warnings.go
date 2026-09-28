@@ -19,6 +19,7 @@ const (
 	WarnUnsupportedMemoType    WarningCode = "UNSUPPORTED_MEMO_TYPE"
 	WarnInvalidDestination     WarningCode = "INVALID_DESTINATION"
 	WarnMissingRequiredMemo    WarningCode = "MISSING_REQUIRED_MEMO"
+	WarnSanitizedHiddenChars   WarningCode = "SANITIZED_HIDDEN_CHARS"
 )
 
 type Warning struct {
@@ -40,10 +41,10 @@ type WarningContext struct {
 }
 
 type warningJSON struct {
-	Code          WarningCode      `json:"code"`
-	Message       string           `json:"message"`
-	Severity      string           `json:"severity"`
-	Normalization *Normalization   `json:"normalization,omitempty"`
+	Code          WarningCode         `json:"code"`
+	Message       string              `json:"message"`
+	Severity      string              `json:"severity"`
+	Normalization *Normalization      `json:"normalization,omitempty"`
 	Context       *warningContextJSON `json:"context,omitempty"`
 }
 

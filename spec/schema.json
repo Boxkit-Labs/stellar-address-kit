@@ -56,6 +56,16 @@
         }
       }
     },
+    "warningSanitizedHiddenChars": {
+      "type": "object",
+      "required": ["code", "severity", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "string", "const": "SANITIZED_HIDDEN_CHARS" },
+        "severity": { "type": "string", "const": "info" },
+        "message": { "type": "string" }
+      }
+    },
     "warningGeneric": {
       "type": "object",
       "required": ["code", "severity", "message"],
@@ -79,6 +89,7 @@
         { "$ref": "#/definitions/warningNormalization" },
         { "$ref": "#/definitions/warningInvalidDestination" },
         { "$ref": "#/definitions/warningUnsupportedMemoType" },
+        { "$ref": "#/definitions/warningSanitizedHiddenChars" },
         { "$ref": "#/definitions/warningGeneric" }
       ]
     }
