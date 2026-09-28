@@ -330,6 +330,84 @@
         ]
       },
       "tags": ["negative", "edge"]
+    },
+    {
+      "module": "extract_routing",
+      "description": "pasted G-address with carriage returns and surrounding whitespace is sanitized",
+      "input": {
+        "destination": "\r\n \tGAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI \t\r\n",
+        "memoType": "none"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": null,
+        "routingSource": "none",
+        "warnings": [
+          {
+            "code": "SANITIZED_HIDDEN_CHARS",
+            "severity": "info",
+            "message": "Destination was sanitized by removing hidden characters and surrounding whitespace."
+          }
+        ]
+      },
+      "tags": [
+        "positive",
+        "edge",
+        "regression",
+        "interop"
+      ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "G-address with malicious zero-width, bidi, variation-selector, and BOM characters is sanitized",
+      "input": {
+        "destination": "GAYCUYT5\u200b53C5LHVE2XPW\u202e5GMEJT4BXGM7\ufe0fAHMJWLAPZP53KJO7EIQADRSI\ufeff",
+        "memoType": "none"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": null,
+        "routingSource": "none",
+        "warnings": [
+          {
+            "code": "SANITIZED_HIDDEN_CHARS",
+            "severity": "info",
+            "message": "Destination was sanitized by removing hidden characters and surrounding whitespace."
+          }
+        ]
+      },
+      "tags": [
+        "positive",
+        "edge",
+        "regression",
+        "interop"
+      ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "M-address with isolate, NUL, and zero-width Unicode characters is sanitized before decoding",
+      "input": {
+        "destination": "\u2066MAYCUYT553C5LHVE\u00002XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7\u200dEIQACABAAAAAAAAAAEVIG\u2069",
+        "memoType": "none"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": "9007199254740993",
+        "routingSource": "muxed",
+        "warnings": [
+          {
+            "code": "SANITIZED_HIDDEN_CHARS",
+            "severity": "info",
+            "message": "Destination was sanitized by removing hidden characters and surrounding whitespace."
+          }
+        ]
+      },
+      "tags": [
+        "positive",
+        "edge",
+        "regression",
+        "interop"
+      ]
     }
   ]
 }

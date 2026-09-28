@@ -360,3 +360,72 @@ func routingIDEqual(a, b *RoutingID) bool {
 	}
 	return a.String() == b.String()
 }
+
+func TestExtractRouting_SanitizesHiddenDestinationCharacters(t *testing.T) {
+	tests := []struct {
+		name        string
+		destination string
+		wantBase    string
+		wantID      *RoutingID
+		wantSource  string
+	}{
+		{
+			name:        "controls_and_surrounding_whitespace",
+			destination: "\r\n \t" + testBaseG + " \t\r\n",
+			wantBase:    testBaseG,
+			wantSource:  "none",
+		},
+		{
+			name: "zero_width_bidi_variation_selector_and_bom",
+			destination: testBaseG[:8] + "\u200B" + testBaseG[8:20] + "\u202E" +
+				testBaseG[20:32] + "\uFE0F" + testBaseG[32:] + "\uFEFF",
+			wantBase:   testBaseG,
+			wantSource: "none",
+		},
+		{
+			name:        "supplementary_variation_selector",
+			destination: testBaseG[:28] + "\U000E0100" + testBaseG[28:],
+			wantBase:    testBaseG,
+			wantSource:  "none",
+		},
+		{
+			name: "muxed_with_isolate_nul_and_zero_width_joiner",
+			destination: "\u2066" + testMuxed[:16] + "\x00" + testMuxed[16:48] +
+				"\u200D" + testMuxed[48:] + "\u2069",
+			wantBase:   testBaseG,
+			wantID:     NewRoutingID("9007199254740993"),
+			wantSource: "muxed",
+		},
+	}
+
+	wantWarning := address.Warning{
+		Code:     address.WarnSanitizedHiddenChars,
+		Severity: "info",
+		Message:  sanitizedHiddenCharsMessage,
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ExtractRouting(RoutingInput{
+				Destination: tt.destination,
+				MemoType:    "none",
+			})
+
+			if result.DestinationError != nil {
+				t.Fatalf("unexpected destination error: %v", result.DestinationError)
+			}
+			if result.DestinationBaseAccount != tt.wantBase {
+				t.Errorf("DestinationBaseAccount = %q, want %q", result.DestinationBaseAccount, tt.wantBase)
+			}
+			if !routingIDEqual(result.RoutingID, tt.wantID) {
+				t.Errorf("RoutingID = %v, want %v", result.RoutingID, tt.wantID)
+			}
+			if result.RoutingSource != tt.wantSource {
+				t.Errorf("RoutingSource = %q, want %q", result.RoutingSource, tt.wantSource)
+			}
+			if !reflect.DeepEqual(result.Warnings, []address.Warning{wantWarning}) {
+				t.Errorf("Warnings = %#v, want %#v", result.Warnings, []address.Warning{wantWarning})
+			}
+		})
+	}
+}

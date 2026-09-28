@@ -19,7 +19,9 @@ void main() {
       expect(result.destinationError, isNull);
     });
 
-    test('prefers external memo over muxed routing and emits memo-ignored warning', () {
+    test(
+        'prefers external memo over muxed routing and emits memo-ignored warning',
+        () {
       final result = extractRoutingSync(
         RoutingInput(
           destination: muxedAddress,
@@ -72,16 +74,19 @@ void main() {
     });
 
     test('throws ExtractRoutingException for C-addresses', () {
-      const cAddress = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
+      const cAddress =
+          'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
       expect(
-        () => extractRoutingSync(RoutingInput(destination: cAddress, memoType: 'none')),
+        () => extractRoutingSync(
+            RoutingInput(destination: cAddress, memoType: 'none')),
         throwsA(isA<ExtractRoutingException>()),
       );
     });
 
     test('throws ExtractRoutingException for empty destination', () {
       expect(
-        () => extractRoutingSync(RoutingInput(destination: '', memoType: 'none')),
+        () =>
+            extractRoutingSync(RoutingInput(destination: '', memoType: 'none')),
         throwsA(isA<ExtractRoutingException>()),
       );
     });
@@ -90,7 +95,8 @@ void main() {
   group('extractRouting (async)', () {
     test('decodes muxed routing when no external memo is present', () async {
       await expectLater(
-        extractRouting(RoutingInput(destination: muxedAddress, memoType: 'none')),
+        extractRouting(
+            RoutingInput(destination: muxedAddress, memoType: 'none')),
         completion(predicate((RoutingResult result) =>
             result.destinationBaseAccount == baseG &&
             result.id == BigInt.parse('9007199254740993') &&
@@ -100,7 +106,9 @@ void main() {
       );
     });
 
-    test('prefers external memo over muxed routing and emits memo-ignored warning', () async {
+    test(
+        'prefers external memo over muxed routing and emits memo-ignored warning',
+        () async {
       await expectLater(
         extractRouting(RoutingInput(
           destination: muxedAddress,
@@ -151,19 +159,77 @@ void main() {
       );
     });
 
-    test('propagates ExtractRoutingException for C-addresses as a Future error', () async {
-      const cAddress = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
+    test('propagates ExtractRoutingException for C-addresses as a Future error',
+        () async {
+      const cAddress =
+          'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
       await expectLater(
-        () => extractRouting(RoutingInput(destination: cAddress, memoType: 'none')),
+        () => extractRouting(
+            RoutingInput(destination: cAddress, memoType: 'none')),
         throwsA(isA<ExtractRoutingException>()),
       );
     });
 
-    test('propagates ExtractRoutingException for empty destination as a Future error', () async {
+    test(
+        'propagates ExtractRoutingException for empty destination as a Future error',
+        () async {
       await expectLater(
         () => extractRouting(RoutingInput(destination: '', memoType: 'none')),
         throwsA(isA<ExtractRoutingException>()),
       );
+    });
+  });
+
+  group('SANITIZED_HIDDEN_CHARS', () {
+    final pastedGAddresses = <String, String>{
+      'controls and surrounding whitespace': '\r\n \t$baseG \t\r\n',
+      'zero-width, bidi, variation-selector, and BOM characters':
+          '${baseG.substring(0, 8)}\u200B${baseG.substring(8, 20)}\u202E'
+              '${baseG.substring(20, 32)}\uFE0F${baseG.substring(32)}\uFEFF',
+      'supplementary variation selector':
+          '${baseG.substring(0, 28)}\u{E0100}${baseG.substring(28)}',
+    };
+
+    for (final entry in pastedGAddresses.entries) {
+      test('sanitizes a G-address containing ${entry.key}', () {
+        final result = extractRoutingSync(
+          RoutingInput(destination: entry.value, memoType: 'none'),
+        );
+
+        expect(result.destinationBaseAccount, baseG);
+        expect(result.id, isNull);
+        expect(result.source, RoutingSource.none);
+        expect(result.destinationError, isNull);
+        expect(result.warnings, hasLength(1));
+        expect(result.warnings.single.code, 'SANITIZED_HIDDEN_CHARS');
+        expect(result.warnings.single.severity, 'info');
+        expect(
+          result.warnings.single.message,
+          'Destination was sanitized by removing hidden characters and surrounding whitespace.',
+        );
+      });
+    }
+
+    test('sanitizes an M-address before decoding it', () {
+      final destination = '\u2066${muxedAddress.substring(0, 16)}\u0000'
+          '${muxedAddress.substring(16, 48)}\u200D'
+          '${muxedAddress.substring(48)}\u2069';
+      final result = extractRoutingSync(
+        RoutingInput(destination: destination, memoType: 'none'),
+      );
+
+      expect(result.destinationBaseAccount, baseG);
+      expect(result.id, BigInt.parse('9007199254740993'));
+      expect(result.source, RoutingSource.muxed);
+      expect(result.destinationError, isNull);
+      expect(result.warnings, [RoutingWarning.sanitizedHiddenChars]);
+    });
+
+    test('does not warn when the destination was not modified', () {
+      final result = extractRoutingSync(
+        RoutingInput(destination: baseG, memoType: 'none'),
+      );
+      expect(result.warnings, isEmpty);
     });
   });
 }

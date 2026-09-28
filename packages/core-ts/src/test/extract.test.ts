@@ -21,7 +21,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { encodeMuxed } from "../muxed/encode";
 import { extractRouting, ExtractRoutingError } from "../routing/extract";
-import type { RoutingInput, RoutingResult, Warning } from "../routing/types";
+import type { RoutingInput, RoutingResult } from "../routing/types";
+import type { Warning } from "../address/types";
 
 // ─── Test fixtures ────────────────────────────────────────────────────────────
 
@@ -279,5 +280,60 @@ describe("multi-warning: NON_CANONICAL_ROUTING_ID + MEMO_ID_INVALID_FORMAT", () 
       expect(typeof w.message).toBe("string");
       expect(w.message.length).toBeGreaterThan(0);
     }
+  });
+});
+
+// ─── 8. Destination sanitization ─────────────────────────────────────────────
+
+describe("SANITIZED_HIDDEN_CHARS warning", () => {
+  const expectedWarning = {
+    code: "SANITIZED_HIDDEN_CHARS",
+    severity: "info",
+    message:
+      "Destination was sanitized by removing hidden characters and surrounding whitespace.",
+  } as const;
+
+  it.each([
+    ["C0 controls and surrounding whitespace", `\r\n \t${G_ADDRESS} \t\r\n`],
+    [
+      "zero-width, bidi, variation-selector, and BOM characters",
+      `${G_ADDRESS.slice(0, 8)}\u200B${G_ADDRESS.slice(8, 20)}\u202E${G_ADDRESS.slice(20, 32)}\uFE0F${G_ADDRESS.slice(32)}\uFEFF`,
+    ],
+    [
+      "supplementary variation selector",
+      `${G_ADDRESS.slice(0, 28)}\u{E0100}${G_ADDRESS.slice(28)}`,
+    ],
+  ])("routes a pasted G-address containing %s", (_description, destination) => {
+    const result = extractRouting(input(destination));
+
+    expect(result.destinationBaseAccount).toBe(G_ADDRESS);
+    expect(result.routingId).toBeNull();
+    expect(result.routingSource).toBe("none");
+    expect(result.warnings).toEqual([expectedWarning]);
+  });
+
+  it("sanitizes an M-address before decoding its base account and routing ID", () => {
+    const destination = `\u2066${M_ADDRESS.slice(0, 16)}\0${M_ADDRESS.slice(16, 48)}\u200D${M_ADDRESS.slice(48)}\u2069`;
+    const result = extractRouting(input(destination));
+
+    expect(result.destinationBaseAccount).toBe(G_ADDRESS);
+    expect(result.routingId).toBe(ROUTING_ID);
+    expect(result.routingSource).toBe("muxed");
+    expect(result.warnings).toEqual([expectedWarning]);
+  });
+
+  it("honors minSeverityLevel while still routing the sanitized destination", () => {
+    const result = extractRouting({
+      ...input(`\u200B${G_ADDRESS}\r\n`),
+      minSeverityLevel: "warn",
+    });
+
+    expect(result.destinationBaseAccount).toBe(G_ADDRESS);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("does not warn when the destination was not modified", () => {
+    const result = extractRouting(input(G_ADDRESS));
+    expect(result.warnings).toEqual([]);
   });
 });

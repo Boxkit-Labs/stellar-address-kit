@@ -17,7 +17,8 @@ export type WarningCode =
   | "MEMO_ID_INVALID_FORMAT"
   | "UNSUPPORTED_MEMO_TYPE"
   | "INVALID_DESTINATION"
-  | "MISSING_REQUIRED_MEMO";
+  | "MISSING_REQUIRED_MEMO"
+  | "SANITIZED_HIDDEN_CHARS";
 
 export type Warning =
   | {
@@ -46,6 +47,11 @@ export type Warning =
       };
     }
   | {
+      code: "SANITIZED_HIDDEN_CHARS";
+      severity: "info";
+      message: string;
+    }
+  | {
       code: Exclude<
         WarningCode,
         | "NON_CANONICAL_ADDRESS"
@@ -53,6 +59,7 @@ export type Warning =
         | "INVALID_DESTINATION"
         | "UNSUPPORTED_MEMO_TYPE"
         | "MISSING_REQUIRED_MEMO"
+        | "SANITIZED_HIDDEN_CHARS"
       >;
       severity: "info" | "warn" | "error";
       message: string;
