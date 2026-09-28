@@ -1,0 +1,18 @@
+[package]
+name = "stellar-address-kit-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+prism-core = { path = "../examples/prism-core" }
+
+[[bin]]
+name = "parse"
+path = "fuzz_targets/parse.rs"
