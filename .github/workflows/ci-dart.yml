@@ -1,26 +1,41 @@
-name: Dart CI
+name: ci-dart
+
+permissions:
+  contents: read
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
-    branches: [ main ]
+    paths:
+      - "packages/core-dart/**"
+      - "spec/**"
+    # `verify-parity` owns this file's CI surface; skip here to avoid
+    # duplicate runs on vectors-only PRs.
+    paths-ignore:
+      - "spec/vectors.json"
+    # Note: paths + paths-ignore combine as an AND across all changed files.
+    # If a PR changes spec/vectors.json *together with* packages/core-dart/**,
+    # this workflow is skipped; verify-parity.yml still runs the identical
+    # commands, so functional coverage is preserved under a different check.
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Dart
-        uses: dart-lang/setup-dart@v1
-
+      - uses: actions/checkout@v5
+      - uses: dart-lang/setup-dart@v1
+      - id: setup-chrome
+        uses: browser-actions/setup-chrome@v1
       - name: Install dependencies
+        working-directory: packages/core-dart
         run: dart pub get
-
-      - name: Run tests
-        run: dart test
-
       - name: Spec validator
-        run: dart run test/spec_runner.dart
+        working-directory: packages/core-dart
+        run: dart test test/spec_runner_test.dart
+      - name: Run tests
+        working-directory: packages/core-dart
+        run: dart test
+      - name: Run web compatibility tests
+        working-directory: packages/core-dart
+        run: dart test test/web_compat --platform chrome
+        env:
+          CHROME_EXECUTABLE: ${{ steps.setup-chrome.outputs.chrome-path }}
