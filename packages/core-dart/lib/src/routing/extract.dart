@@ -2,6 +2,7 @@ import '../address/codes.dart' as codes;
 import '../address/parse.dart';
 import '../muxed/decode.dart';
 import 'routing_result.dart';
+import 'routing_warning.dart';
 import 'memo.dart';
 import 'safe_routing_id.dart';
 
