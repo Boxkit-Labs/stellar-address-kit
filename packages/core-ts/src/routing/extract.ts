@@ -95,7 +95,32 @@ export function extractRouting(input: RoutingInput): RoutingResult {
       ]
     : [];
 
+  if (input.sourceAccount) {
+    try {
+      const source = parse(input.sourceAccount);
+      if (source.kind === "C") {
+        const warnings: Warning[] = [
+          ...sanitizationWarnings,
+          {
+            code: "CONTRACT_SENDER_DETECTED",
+            severity: "info",
+            message: WARNING_MESSAGES.CONTRACT_SENDER_DETECTED,
+          },
+        ];
+        return {
+          destinationBaseAccount: null,
+          routingId: null,
+          routingSource: "none",
+          warnings: filterBySeverity(warnings, minSeverity),
+        };
+      }
+    } catch {
+      // Ignore source account parsing errors for routing extraction
+    }
+  }
+
   let parsed;
+
   try {
     parsed = parse(destination);
   } catch (error) {

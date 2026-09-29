@@ -108,16 +108,15 @@ describe("MEMO_IGNORED_FOR_MUXED warning", () => {
 
 // ─── 3. CONTRACT_SENDER_DETECTED ─────────────────────────────────────────────
 //
-// C-addresses are rejected by assertRoutableAddress() before reaching the
-// parsed.kind === "C" branch, so extractRouting throws ExtractRoutingError
-// rather than returning a CONTRACT_SENDER_DETECTED warning object.
-// This test documents that gate behaviour.
+// When destination is a C-address, it is rejected by assertRoutableAddress()
+// throwing ExtractRoutingError. When sourceAccount is a C-address, extractRouting
+// returns a result with routingSource "none" and a CONTRACT_SENDER_DETECTED warning.
 
 describe("CONTRACT_SENDER_DETECTED – C-address routing guard", () => {
   // A well-formed Stellar contract address (C-prefix).
   const C_ADDRESS = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
 
-  it("throws ExtractRoutingError for a contract address", () => {
+  it("throws ExtractRoutingError for a contract destination address", () => {
     expect(() => extractRouting(input(C_ADDRESS))).toThrow(ExtractRoutingError);
   });
 
@@ -127,7 +126,7 @@ describe("CONTRACT_SENDER_DETECTED – C-address routing guard", () => {
     );
   });
 
-  it("does NOT return a result object – no silent failure", () => {
+  it("does NOT return a result object for contract destination – no silent failure", () => {
     let result: RoutingResult | undefined;
     try {
       result = extractRouting(input(C_ADDRESS));
@@ -136,7 +135,71 @@ describe("CONTRACT_SENDER_DETECTED – C-address routing guard", () => {
     }
     expect(result).toBeUndefined();
   });
+
+  it("emits CONTRACT_SENDER_DETECTED warning and clears routing state when sourceAccount is a C-address", () => {
+    const result = extractRouting({
+      destination: G_ADDRESS,
+      memoType: "id",
+      memoValue: "100",
+      sourceAccount: C_ADDRESS,
+    });
+
+    expect(result.destinationBaseAccount).toBeNull();
+    expect(result.routingId).toBeNull();
+    expect(result.routingSource).toBe("none");
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].code).toBe("CONTRACT_SENDER_DETECTED");
+    expect(result.warnings[0].severity).toBe("info");
+    expect(result.warnings[0].message).toBe(
+      "Contract source detected. Routing state cleared."
+    );
+  });
+
+  it("preserves sanitization warning when sourceAccount is a C-address and destination required sanitization", () => {
+    const result = extractRouting({
+      destination: `  ${G_ADDRESS}  `,
+      memoType: "id",
+      memoValue: "100",
+      sourceAccount: C_ADDRESS,
+    });
+
+    expect(result.destinationBaseAccount).toBeNull();
+    expect(result.routingId).toBeNull();
+    expect(result.routingSource).toBe("none");
+    expect(result.warnings).toHaveLength(2);
+    expect(result.warnings[0].code).toBe("SANITIZED_HIDDEN_CHARS");
+    expect(result.warnings[1].code).toBe("CONTRACT_SENDER_DETECTED");
+  });
+
+  it("filters CONTRACT_SENDER_DETECTED warning if minSeverityLevel is warn or error", () => {
+    const result = extractRouting({
+      destination: G_ADDRESS,
+      memoType: "id",
+      memoValue: "100",
+      sourceAccount: C_ADDRESS,
+      minSeverityLevel: "warn",
+    });
+
+    expect(result.destinationBaseAccount).toBeNull();
+    expect(result.routingId).toBeNull();
+    expect(result.routingSource).toBe("none");
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  it("ignores invalid sourceAccount strings gracefully and proceeds with routing", () => {
+    const result = extractRouting({
+      destination: G_ADDRESS,
+      memoType: "id",
+      memoValue: "100",
+      sourceAccount: "not-a-valid-stellar-address",
+    });
+
+    expect(result.destinationBaseAccount).toBe(G_ADDRESS);
+    expect(result.routingId).toBe("100");
+    expect(result.routingSource).toBe("memo");
+  });
 });
+
 
 // ─── 4. MEMO_ID_INVALID_FORMAT ────────────────────────────────────────────────
 
