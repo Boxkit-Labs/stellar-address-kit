@@ -2,9 +2,11 @@ import 'package:stellar_address_kit/stellar_address_kit.dart';
 import 'package:test/test.dart';
 
 void main() {
-  const baseG = 'GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI';
+  const baseG = 'GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADBSI';
   const muxedAddress =
       'MAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQACABAAAAAAAAAAEVIG';
+  const cAddress =
+      'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
 
   group('extractRoutingSync', () {
     test('decodes muxed routing when no external memo is present', () {
@@ -74,8 +76,6 @@ void main() {
     });
 
     test('throws ExtractRoutingException for C-addresses', () {
-      const cAddress =
-          'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
       expect(
         () => extractRoutingSync(
             RoutingInput(destination: cAddress, memoType: 'none')),
@@ -89,6 +89,57 @@ void main() {
             extractRoutingSync(RoutingInput(destination: '', memoType: 'none')),
         throwsA(isA<ExtractRoutingException>()),
       );
+    });
+
+    test('emits contract-sender warning for C-address source account', () {
+      final result = extractRoutingSync(
+        RoutingInput(
+          destination: baseG,
+          memoType: 'none',
+          sourceAccount: cAddress,
+        ),
+      );
+
+      expect(result.source, RoutingSource.none);
+      expect(result.destinationBaseAccount, isNull);
+      expect(result.id, isNull);
+      expect(result.destinationError, isNull);
+      expect(result.warnings, hasLength(1));
+      expect(result.warnings.single.code, 'contract-sender');
+    });
+
+    test(
+        'emits memo-ignored and contract-sender warnings for muxed + memo + C-address source',
+        () {
+      final result = extractRoutingSync(
+        RoutingInput(
+          destination: muxedAddress,
+          memoType: 'id',
+          memoValue: '42',
+          sourceAccount: cAddress,
+        ),
+      );
+
+      expect(result.source, RoutingSource.none);
+      expect(result.destinationBaseAccount, isNull);
+      expect(result.id, isNull);
+      expect(result.destinationError, isNull);
+      expect(result.warnings, hasLength(1));
+      expect(result.warnings.single.code, 'contract-sender');
+    });
+
+    test('ignores non-C-address source accounts', () {
+      final result = extractRoutingSync(
+        RoutingInput(
+          destination: baseG,
+          memoType: 'none',
+          sourceAccount: baseG,
+        ),
+      );
+
+      expect(result.source, RoutingSource.none);
+      expect(result.destinationBaseAccount, baseG);
+      expect(result.warnings, isEmpty);
     });
   });
 
@@ -161,8 +212,6 @@ void main() {
 
     test('propagates ExtractRoutingException for C-addresses as a Future error',
         () async {
-      const cAddress =
-          'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
       await expectLater(
         () => extractRouting(
             RoutingInput(destination: cAddress, memoType: 'none')),
@@ -175,22 +224,60 @@ void main() {
         () async {
       await expectLater(
         () => extractRouting(RoutingInput(destination: '', memoType: 'none')),
-        throwsA(isA<ExtractRoutingException>()),
+        throwsA(isA<extractRoutingException>()),
+      );
+    });
+
+    test('emits contract-sender warning for C-address source account',
+        () async {
+      await expectLater(
+        extractRouting(RoutingInput(
+          destination: baseG,
+          memoType: 'none',
+          sourceAccount: cAddress,
+        )),
+        completion(predicate((RoutingResult result) =>
+            result.source == RoutingSource.none &&
+            result.destinationBaseAccount == null &&
+            result.id == null &&
+            result.destinationError == null &&
+            result.warnings.length == 1 &&
+            result.warnings.single.code == 'contract-sender')),
+      );
+    });
+
+    test(
+        'emits memo-ignored and contract-sender warnings for muxed + memo + C-address source',
+        () async {
+      await expectLater(
+        extractRouting(RoutingInput(
+          destination: muxedAddress,
+          memoType: 'id',
+          memoValue: '42',
+          sourceAccount: cAddress,
+        )),
+        completion(predicate((RoutingResult result) =>
+            result.source == RoutingSource.none &&
+            result.destinationBaseAccount == null &&
+            result.id == null &&
+            result.destinationError == null &&
+            result.warnings.length == 1 &&
+            result.warnings.single.code == 'contract-sender')),
       );
     });
   });
 
   group('SANITIZED_HIDDEN_CHARS', () {
-    final pastedGAddresses = <String, String>{
+    final pastedAddresses = <String, String>{
       'controls and surrounding whitespace': '\r\n \t$baseG \t\r\n',
       'zero-width, bidi, variation-selector, and BOM characters':
-          '${baseG.substring(0, 8)}\u200B${baseG.substring(8, 20)}\u202E'
+          '${baseG.substring(0, 8)}\u200B${baseG.substring(8, 20)}\u202E'$
               '${baseG.substring(20, 32)}\uFE0F${baseG.substring(32)}\uFEFF',
       'supplementary variation selector':
           '${baseG.substring(0, 28)}\u{E0100}${baseG.substring(28)}',
     };
 
-    for (final entry in pastedGAddresses.entries) {
+    for (final entry in pastedAddresses.entries) {
       test('sanitizes a G-address containing ${entry.key}', () {
         final result = extractRoutingSync(
           RoutingInput(destination: entry.value, memoType: 'none'),
