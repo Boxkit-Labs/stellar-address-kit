@@ -1,5 +1,8 @@
 name: ci-dart
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     paths:
@@ -18,7 +21,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dart-lang/setup-dart@v1
       - uses: actions/setup-node@v4
         with:
@@ -28,8 +31,17 @@ jobs:
         run: node spec/validate.js
       - id: setup-chrome
         uses: browser-actions/setup-chrome@v1
-      - run: cd packages/core-dart && dart pub get
-      - run: cd packages/core-dart && dart test
-      - run: cd packages/core-dart && dart test test/web_compat --platform chrome
+      - name: Install dependencies
+        working-directory: packages/core-dart
+        run: dart pub get
+      - name: Spec validator
+        working-directory: packages/core-dart
+        run: dart test test/spec_runner_test.dart
+      - name: Run tests
+        working-directory: packages/core-dart
+        run: dart test
+      - name: Run web compatibility tests
+        working-directory: packages/core-dart
+        run: dart test test/web_compat --platform chrome
         env:
           CHROME_EXECUTABLE: ${{ steps.setup-chrome.outputs.chrome-path }}
