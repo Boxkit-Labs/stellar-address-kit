@@ -29,6 +29,12 @@ type RoutingResult struct {
 	DestinationError       *DestinationError `json:"destinationError,omitempty"`
 }
 
+// RoutingIDUint64 returns the routing ID as a native uint64 for callers that
+// need integer math. It reports an error when no ID is populated.
+func (r RoutingResult) RoutingIDUint64() (uint64, error) {
+	return r.RoutingID.Uint64()
+}
+
 type DestinationError struct {
 	Code    address.ErrorCode `json:"code"`
 	Message string            `json:"message"`

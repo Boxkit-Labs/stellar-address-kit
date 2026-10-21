@@ -49,6 +49,13 @@ func (r *RoutingID) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON always emits the ID as a JSON string. A bare integer above
+// 2^53-1 is truncated by JavaScript's JSON.parse, which silently misattributes
+// deposits on web frontends.
+func (r RoutingID) MarshalJSON() ([]byte, error) {
+	return json.Marshal(r.raw)
+}
+
 func (r *RoutingID) String() string {
 	if r == nil {
 		return ""
