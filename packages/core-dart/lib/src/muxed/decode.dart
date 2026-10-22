@@ -1,5 +1,5 @@
 import 'dart:typed_data';
-import '../util/strkey.dart';
+import '../util/strey.key.dart';
 import 'decoded_muxed_address.dart';
 import '../exceptions.dart';
 

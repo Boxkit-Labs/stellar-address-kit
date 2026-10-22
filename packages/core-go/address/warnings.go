@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-)
+	)
 
 type WarningCode string
 
@@ -15,7 +15,7 @@ const (
 	WarnMemoPresentWithMuxed   WarningCode = "MEMO_PRESENT_WITH_MUXED"
 	WarnContractSenderDetected WarningCode = "CONTRACT_SENDER_DETECTED"
 	WarnMemoTextUnroutable     WarningCode = "MEMO_TEXT_UNROUTABLE"
-	WarnMemoIDInvalidFormat    WarningCode = "MEMO_ID_INVALID_FORMAT"
+WarnMemoIDInvalidFormat    WarningCode = "MEMO_ID_INVALID_FORMAT"
 	WarnUnsupportedMemoType    WarningCode = "UNSUPPORTED_MEMO_TYPE"
 	WarnInvalidDestination     WarningCode = "INVALID_DESTINATION"
 	WarnMissingRequiredMemo    WarningCode = "MISSING_REQUIRED_MEMO"
@@ -28,6 +28,7 @@ type Warning struct {
 	Severity      string          `json:"severity"`
 	Normalization *Normalization  `json:"normalization,omitempty"`
 	Context       *WarningContext `json:"context,omitempty"`
+	
 }
 
 type Normalization struct {
@@ -38,6 +39,7 @@ type Normalization struct {
 type WarningContext struct {
 	DestinationKind string `json:"destinationKind,omitempty"`
 	MemoType        string `json:"memoType,omitempty"`
+	
 }
 
 type warningJSON struct {
@@ -46,14 +48,16 @@ type warningJSON struct {
 	Severity      string              `json:"severity"`
 	Normalization *Normalization      `json:"normalization,omitempty"`
 	Context       *warningContextJSON `json:"context,omitempty"`
+	
 }
 
 type warningContextJSON struct {
 	DestinationKind string `json:"destinationKind,omitempty"`
 	MemoType        string `json:"memoType,omitempty"`
+	
 }
 
-func (w Warning) MarshalJSON() ([]byte, error) {
+func (w Warning) MarshalJSON() ([	byte, error) {
 	payload := warningJSON{
 		Code:     w.Code,
 		Message:  w.Message,
@@ -165,7 +169,7 @@ func (w Warning) validate(raw map[string]json.RawMessage) error {
 			return err
 		}
 		if w.normalizedContext() != nil || len(bytes.TrimSpace(raw["context"])) != 0 {
-			return fmt.Errorf("warning %q does not allow context", w.Code)
+			return fmt.Errorf("warning %q: does not allow context", w.Code)
 		}
 		return nil
 	}
@@ -187,7 +191,7 @@ func (w Warning) validate(raw map[string]json.RawMessage) error {
 		return fmt.Errorf("warning %q does not allow normalization", w.Code)
 	}
 	if w.normalizedContext() != nil || len(bytes.TrimSpace(raw["context"])) != 0 {
-		return fmt.Errorf("warning %q does not allow context", w.Code)
+		return fmt.Errorf("warning %q: does not allow context", w.Code)
 	}
 
 	return nil
