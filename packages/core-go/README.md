@@ -46,6 +46,36 @@ func main() {
 }
 ```
 
+## SEP-0029 Memo Requirement Checking
+
+Exchanges can require a memo on deposits (SEP-0029). Query Horizon for a
+destination's `config.memo_required` / `config.requiring_memo` data entries,
+or wrap `ExtractRouting` with the async variant that appends the
+`MISSING_REQUIRED_MEMO` error warning when a memo is required but missing:
+
+```go
+// Convenience lookup against the default Horizon endpoint (10s timeout).
+required, err := routing.FetchMemoRequirement("GA7QYNF7SOWQ3GLR2B6RS22TBGZAOR6KLYH4PA5ZAM73A3H4K2HZZSQU")
+
+// Non-blocking wrapper: the result arrives on a channel and the Horizon
+// lookup honours context cancellation.
+ctx := context.Background()
+result := <-routing.ExtractRoutingAsync(ctx, routing.RoutingInput{
+	Destination: "GA7QYNF7SOWQ3GLR2B6RS22TBGZAOR6KLYH4PA5ZAM73A3H4K2HZZSQU",
+	MemoType:    "none",
+})
+for _, warning := range result.Warnings {
+	if warning.Code == address.WarnMissingRequiredMemo {
+		fmt.Println("destination requires a memo, but none was provided")
+	}
+}
+```
+
+Both functions accept functional options (`routing.WithHTTPClient`,
+`routing.WithHorizonURL`) for custom Horizon deployments such as testnet.
+Network and configuration failures fail open: the synchronous routing result
+is returned unchanged.
+
 ## Examples
 
 ### Complete Payment Listener
