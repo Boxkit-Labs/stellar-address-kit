@@ -9,6 +9,7 @@ export 'src/muxed/encode.dart';
 export 'src/muxed/decode.dart';
 export 'src/muxed/decoded_muxed_address.dart';
 export 'src/routing/extract.dart';
+export 'src/routing/memo_requirement.dart';
 export 'src/routing/routing_result.dart';
 export 'src/routing/memo.dart';
 export 'src/muxed/muxed_address.dart';
