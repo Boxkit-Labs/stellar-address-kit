@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:test/test.dart';
+import 'package:test/test.dart';
 import 'package:stellar_address_kit/stellar_address_kit.dart';
 
 const legacyVectorG = "GA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1";
 const legacyVectorMPrefix = "MA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1";
 const legacyVectorCPrefix = "CA7QYNF7SZFX4X7X5JFZZ3UQ6BXHDSY2RKVKZKX5FFQJ1ZMZX1";
 
+const validG = "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI";
 const validG = "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI";
 const validC = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
 
@@ -56,6 +58,7 @@ void main() {
             final BigInt id = BigInt.parse(input['id'].toString());
             final String result = MuxedAddress.encode(baseG: baseG, id: id);
             expect(result, expected['mAddress']);
+            expect(result, expected['mAddress']);
             break;
 
           case 'muxed_decode':
@@ -74,6 +77,7 @@ void main() {
           case 'detect':
             final kind = detect(input['address'].toString());
             if (expected.containsKey('kind')) {
+              expect(kind?.toString().split('.').last.toUpperCase(),
               expect(kind?.toString().split('.').last.toUpperCase(),
                   expected['kind']);
             } else {
@@ -99,6 +103,7 @@ void main() {
 
               expect(result.destinationBaseAccount,
                   normalizeExpectedBaseAccount(expected['destinationBaseAccount']));
+                  normalizeExpectedBaseAccount(expected['destinationBaseAccount']));
 
               if (expected['routingId'] != null) {
                 expect(result.id, BigInt.parse(expected['routingId'].toString()));
@@ -111,6 +116,7 @@ void main() {
               if (expected.containsKey('warnings')) {
                 final List<dynamic> expectedWarnings =
                     expected['warnings'] as List<dynamic>;
+                    expected['warnings'] as List<dynamic>;
                 expect(result.warnings.length, expectedWarnings.length);
                 for (var i = 0; i < expectedWarnings.length; i++) {
                   final eW = expectedWarnings[i] as Map<String, dynamic>;
@@ -120,6 +126,7 @@ void main() {
 
               if (expected.containsKey('destinationError')) {
                 final eE = expected['destinationError'] as Map<String, dynamic>;
+                expect(result.destinationError?.code, eE['code']);
                 expect(result.destinationError?.code, eE['code']);
               }
             } on ExtractRoutingException {
