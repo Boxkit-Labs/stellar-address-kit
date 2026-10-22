@@ -19,6 +19,8 @@ const SEVERITY_ORDER: Record<WarningSeverity, number> = {
 const HIDDEN_OR_NON_PRINTABLE =
   /[\p{C}\p{Zl}\p{Zp}\p{Default_Ignorable_Code_Point}]/gu;
 
+const HEX_HASH_REGEX = /^[0-9a-fA-F]{64}$/;
+
 function sanitizeDestination(destination: string): {
   destination: string;
   modified: boolean;
@@ -70,11 +72,17 @@ function assertRoutableAddress(destination: unknown): asserts destination is str
  * Routing Policy:
  * 1. M-addresses: Routing ID is extracted from the address; any memo is ignored for routing.
  * 2. G-addresses: Routing ID is extracted from MEMO_ID or numeric MEMO_TEXT if valid.
+ * 3. When allowHashRouting is enabled, a 32-byte hex MEMO_HASH or MEMO_RETURN
+ *    is used as the routing ID (normalized to lowercase).
  * 
  * @param input - The destination address and optional memo components.
+ * @param config - Optional configuration for routing extraction.
  * @returns A result containing the base account, routing ID, source, and any warnings.
  */
-export function extractRouting(input: RoutingInput): RoutingResult {
+export function extractRouting(
+  input: RoutingInput,
+  config?: { allowHashRouting?: boolean }
+): RoutingResult {
   const rawDestination = input?.destination;
   if (typeof rawDestination !== "string") {
     assertRoutableAddress(rawDestination);
@@ -244,11 +252,19 @@ export function extractRouting(input: RoutingInput): RoutingResult {
       });
     }
   } else if (input.memoType === "hash" || input.memoType === "return") {
-    warnings.push({
-      code: "MEMO_TEXT_UNROUTABLE",
-      severity: "warn",
-      message: `Memo type ${input.memoType} is not supported for routing.`,
-    });
+    const rawValue = (input.memoValue ?? "").trim();
+    if (config?.allowHashRouting && HEX_HASH_REGEX.test(rawValue)) {
+      routingId = rawValue.toLowerCase();
+      routingSource = "memo";
+    } else {
+      warnings.push({
+        code: "MEMO_TEXT_UNROUTABLE",
+        severity: "warn",
+        message: config?.allowHashRouting
+          ? `Memo type ${input.memoType} must be a 32-byte hex string for routing.`
+          : `Memo type ${input.memoType} is not supported for routing.`,
+      });
+    }
   } else if (input.memoType !== "none") {
     warnings.push({
       code: "MEMO_TEXT_UNROUTABLE",
