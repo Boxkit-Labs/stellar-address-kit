@@ -165,5 +165,105 @@ void main() {
         }
       });
     });
+
+    group('protocol boundaries and adversarial inputs', () {
+      const validG = 'GCALNQQBXAPZ2WIRSDDBMSTAKCUH5SG6U76YBFLQLIXJTF7FE5AX7AOO';
+
+      test('handles uint64 boundary memo values', () {
+        const boundaries = <String>[
+          '0',
+          '1',
+          '18446744073709551615',
+          '18446744073709551616',
+        ];
+        for (final value in boundaries) {
+          final uri =
+              'web+stellar:pay?destination=$validG&memo=$value&memo_type=MEMO_ID';
+          final result = extractRoutingFromURI(uri);
+          expect(result.success, isTrue, reason: 'memo=$value');
+          if (result is ExtractRoutingFromUriSuccess) {
+            expect(result.rawParams.memo, value);
+            expect(result.rawParams.memoType, 'MEMO_ID');
+          }
+        }
+      });
+
+      test('accepts secret seed, pre-auth, and hash signer destinations', () {
+        const signers = <String>[
+          'SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+          'TAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+          'XAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+        ];
+        for (final signer in signers) {
+          final uri = 'web+stellar:pay?destination=$signer';
+          final result = extractRoutingFromURI(uri);
+          expect(result.success, isFalse, reason: 'signer=$signer');
+          if (result is ExtractRoutingFromUriFailure) {
+            expect(result.code, Sep7UriErrorCode.invalidDestination);
+          }
+        }
+      });
+
+      test('preserves multi-byte UTF-8 memo text', () {
+        const memo = '\u00e9\u00e8\u00ea \u4f60\u597d \ud83d\ude00';
+        final encoded = Uri.encodeComponent(memo);
+        final uri =
+            'web+stellar:pay?destination=$validG&memo=$encoded&memo_type=MEMO_TEXT';
+        final result = extractRoutingFromURI(uri);
+        expect(result.success, isTrue);
+        if (result is ExtractRoutingFromUriSuccess) {
+          expect(result.rawParams.memo, memo);
+          expect(result.rawParams.memoType, 'MEMO_TEXT');
+        }
+      });
+
+      test('rejects zero-width and bidi override characters in destination', () {
+        const adversarial = <String>[
+          '\u200b',
+          '\u200c',
+          '\u200d',
+          '\u202a',
+          '\u202b',
+          '\u202c',
+          '\u202d',
+          '\u202e',
+          '\u2066',
+          '\u2067',
+          '\u2068',
+          '\u2069',
+          '\ufeff',
+        ];
+        for (final hidden in adversarial) {
+          final uri =
+              'web+stellar:pay?destination=${Uri.encodeComponent('$validG$hidden')}';
+          final result = extractRoutingFromURI(uri);
+          expect(result.success, isFalse, reason: 'hidden=U+${hidden.codeUnitAt(0).toRadixString(16)}');
+          if (result is ExtractRoutingFromUriFailure) {
+            expect(result.code, Sep7UriErrorCode.invalidDestination);
+          }
+        }
+      });
+
+      test('rejects malformed SEP-0007 URIs', () {
+        const malformed = <String>[
+          'web+stellar:',
+          'web+stellar:?',
+          'web+stellar:pay?',
+          'web+stellar:pay?destination',
+          'web+stellar:pay?destination=',
+          'web+stellar:pay?=value',
+          'web+stellar:pay?destination=$validG&memo_type=INVALID',
+          'web+stellar:pay?destination=$validG&memo_type=MEMO_ID&memo=notanumber',
+          'web+stellar:pay?destination=$validG&amount=notanumber',
+          'web+stellar:pay?destination=$validG&asset_code=USDC',
+          'web+stellar:pay?destination=$validG&asset_issuer=GAP5LETOV6YIE62YAM56STDANPRDO7ZFDBGSNHJQIYGGKSMOZAHOOS2S',
+          'web+stellar:pay?destination=$validG&callback=notaurl',
+        ];
+        for (final uri in malformed) {
+          final result = extractRoutingFromURI(uri);
+          expect(result.success, isFalse, reason: 'uri=$uri');
+        }
+      });
+    });
   });
 }
