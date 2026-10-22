@@ -6,8 +6,8 @@ description: "The primary API for deposit routing."
 `extractRouting` is the core function of the library. It reconciles an address and memo into a canonical routing result.
 
 ## Function Signatures
-
 <CodeGroup>
+
 ```typescript TypeScript
 function extractRouting(input: RoutingInput): RoutingResult
 ```
@@ -19,6 +19,7 @@ func ExtractRouting(input RoutingInput) RoutingResult
 ```dart Dart
 RoutingResult extractRouting(RoutingInput input)
 ```
+
 </CodeGroup>
 
 ## Input: `RoutingInput`
@@ -28,12 +29,32 @@ RoutingResult extractRouting(RoutingInput input)
 | `address` | `string` | The destination address (G, M, or C). |
 | `memoType` | `string` | (Optional) `ID`, `TEXT`, `HASH`, or `RETURN`. |
 | `memoValue` | `string` | (Optional) The raw memo value. |
+| `allowHashRouting` | `boolean` | (Optional) When enabled, accepts 32-byte hex memos for `MEMO_HASH` and `MEMO_RETURN`. Defaults to `false`. |
 
 ## Output: `RoutingResult`
 
 | Field | Type | Description |
 |---|---|---|
 | `address` | `string` | The canonical base G-address. |
-| `routingId` | `string` | The extracted 64-bit ID (or empty string). |
+| `routingId` | `string` | The extracted 64-bit ID (or empty string). For hash routing, the normalized lowercase 64-character hex string. |
+| `routingSource` | `string` | The source of the routing ID (e.g. `memo`). |
 | `warnings` | `Warning[]` | List of warnings encountered. |
 | `destinationError` | `string` | Error code if the destination is invalid. |
+
+## Hash Routing
+
+By default, `MEMO_HASH` and `MEMO_RETURN` memos are flagged as `MEMO_TEXT_UNROUTABLE`. Many cross-chain bridges and institutional custodians use 32-byte hex hashes as deposit identifiers. Set `allowHashRouting` to `true` to enable these memos.
+
+When enabled, the memo must be a valid 32-byte hex string (64 hexadecimal characters). If valid, `routingSource` is set to `memo` and `routingId` is the normalized lowercase hex string.
+
+```typescript
+const result = extractRouting({
+  address: "GADDRESS...",
+  memoType: "HASH",
+  memoValue: "ABCDEF0123456789ABDEF0123456789ABDEF0123456789ABDEF0123456789",
+  allowHashRouting: true,
+});
+
+// result.routingSource === "memo"
+// result.routingId === "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+```
