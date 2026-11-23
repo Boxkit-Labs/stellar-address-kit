@@ -57,7 +57,7 @@ type warningContextJSON struct {
 	
 }
 
-func (w Warning) MarshalJSON() ([	byte, error) {
+func (w Warning) MarshalJSON() ([]byte, error) {
 	payload := warningJSON{
 		Code:     w.Code,
 		Message:  w.Message,
