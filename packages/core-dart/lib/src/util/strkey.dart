@@ -36,6 +36,31 @@ class StrKeyUtil {
     return result;
   }
 
+  /// Decodes a classic `G...` address into its 32-byte Ed25519 public key.
+  ///
+  /// Throws a [FormatException] when the address is not 35 bytes, does not
+  /// carry the Ed25519 public key version byte, or fails its checksum.
+  static Uint8List decodeEd25519PublicKey(String address) {
+    // A G address is exactly 56 base32 characters; decodeBase32 would
+    // silently ignore anything past the 35th byte, so check the text first.
+    if (address.length != 56) {
+      throw const FormatException('Invalid G address length');
+    }
+    final decoded = decodeBase32(address);
+    if (decoded.length != 35) {
+      throw const FormatException('Invalid G address length');
+    }
+    if (decoded[0] != 0x30) {
+      throw const FormatException('Not an Ed25519 public key address');
+    }
+    final checksum = calculateChecksum(Uint8List.sublistView(decoded, 0, 33));
+    if (decoded[33] != (checksum & 0xFF) ||
+        decoded[34] != ((checksum >> 8) & 0xFF)) {
+      throw const FormatException('Invalid G address checksum');
+    }
+    return Uint8List.fromList(decoded.sublist(1, 33));
+  }
+
   static String encodeBase32(Uint8List data) {
     final result = StringBuffer();
 

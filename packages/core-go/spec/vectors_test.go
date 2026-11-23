@@ -87,7 +87,9 @@ func warningsAsJSONValue(t *testing.T, warnings []address.Warning) interface{} {
 	return value
 }
 
-func TestVectors(t *testing.T) {
+// TestSpecVectors replays every case in spec/vectors.json. The name is what
+// the ci-go workflow selects with `-run TestSpecVectors`.
+func TestSpecVectors(t *testing.T) {
 	f, err := os.Open("../../../spec/vectors.json")
 	if err != nil {
 		t.Fatalf("failed to open vectors.json: %v", err)
@@ -196,6 +198,9 @@ func TestVectors(t *testing.T) {
 						t.Errorf("expected error or empty kind for invalid address")
 					}
 				}
+
+			default:
+				t.Fatalf("unhandled vector module %q", tc.Module)
 			}
 		})
 	}
