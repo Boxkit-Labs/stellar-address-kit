@@ -1,0 +1,52 @@
+---
+title: "resolveFederationAddress"
+description: "Resolve SEP-0002 federation addresses (user*domain.com) into a RoutingInput."
+---
+
+`resolveFederationAddress` runs the [SEP-0002](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0002.md) federation protocol and returns a `RoutingInput` you can pass straight to `extractRouting`. TypeScript only.
+
+## Signature
+
+```typescript
+function resolveFederationAddress(
+  address: string,
+  options?: { fetchImpl?: FederationFetch; timeoutMs?: number }
+): Promise<RoutingInput>
+```
+
+## Flow
+
+1. Validate the `name*domain.tld` syntax.
+2. Fetch `https://<domain>/.well-known/stellar.toml` and read `FEDERATION_SERVER`.
+3. Query `<FEDERATION_SERVER>?q=<address>&type=name`.
+4. Validate `account_id`, `memo_type` and `memo`, and return a `RoutingInput`.
+
+```typescript
+const input = await resolveFederationAddress("alice*example.com");
+const routing = extractRouting(input);
+```
+
+`MEMO_HASH` values (base64 on the wire) are returned as 64 hex characters. When the server returns no memo, `memoType` is `"none"` and `memoValue` is `null`.
+
+## Options
+
+| Option | Description |
+|---|---|
+| `fetchImpl` | Custom `fetch`-compatible function, for mocking or custom HTTP clients. Defaults to `globalThis.fetch`. |
+| `timeoutMs` | Per-request timeout. Defaults to `10000`. |
+
+## Errors
+
+Failures throw `FederationError` with a `code`:
+
+| Code | Meaning |
+|---|---|
+| `INVALID_FEDERATION_ADDRESS` | The address is not valid `name*domain.tld`. No request is made. |
+| `STELLAR_TOML_FETCH_FAILED` | `stellar.toml` could not be fetched (network error, non-2xx, timeout, oversized). |
+| `FEDERATION_SERVER_NOT_FOUND` | `stellar.toml` has no usable `https` `FEDERATION_SERVER`. |
+| `FEDERATION_LOOKUP_FAILED` | The federation server request failed or returned non-2xx. |
+| `INVALID_FEDERATION_RESPONSE` | The response is malformed, has an invalid account or memo, or its `stellar_address` does not match. |
+
+## Safety notes
+
+Redirects are never followed, response bodies are capped at 100 KB, and `FEDERATION_SERVER` must be an `https` URL that is not `localhost` or an IP literal.
