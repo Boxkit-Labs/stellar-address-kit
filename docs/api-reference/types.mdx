@@ -19,22 +19,39 @@ interface RoutingResult {
 ## Warning
 
 A discriminated union (in TS) or object (Go/Dart) describing a non-fatal issue.
+Every implementation serialises it to the same JSON shape.
 
 ```typescript
 type Warning = {
-  code: string;             // WarningCode
-  severity: 'INFO' | 'WARN' | 'ERROR';
+  code: WarningCode;
+  severity: 'info' | 'warn' | 'error';
   message: string;
+  // NON_CANONICAL_ADDRESS, NON_CANONICAL_ROUTING_ID
+  normalization?: { original: string; normalized: string };
+  // INVALID_DESTINATION -> { destinationKind: 'C' }
+  // UNSUPPORTED_MEMO_TYPE -> { memoType: 'hash' | 'return' | 'unknown' }
+  context?: { destinationKind?: 'C'; memoType?: 'hash' | 'return' | 'unknown' };
 }
 ```
 
-## ErrorCode (Fatal)
-- `INVALID_CHECKSUM`
-- `INVALID_DESTINATION` (e.g. C-address)
-- `UNSUPPORTED_MEMO_TYPE`
+## WarningCode
 
-## WarningCode (Non-fatal)
-- `REDUNDANT_MEMO`
-- `MEMO_TYPE_MISMATCH`
-- `NON_ROUTABLE_MEMO`
-- `JS_PRECISION_LOSS`
+See the [Warning System](/concepts/warning-system) for each code's severity and payload.
+
+- `SANITIZED_HIDDEN_CHARS`
+- `CONTRACT_SENDER_DETECTED`
+- `MEMO_IGNORED_FOR_MUXED`
+- `NON_CANONICAL_ADDRESS`
+- `NON_CANONICAL_ROUTING_ID`
+- `MEMO_PRESENT_WITH_MUXED`
+- `MEMO_TEXT_UNROUTABLE`
+- `MEMO_ID_INVALID_FORMAT`
+- `UNSUPPORTED_MEMO_TYPE`
+- `INVALID_DESTINATION`
+- `MISSING_REQUIRED_MEMO`
+
+## ErrorCode (`destinationError`)
+- `INVALID_CHECKSUM`
+- `INVALID_LENGTH`
+- `INVALID_BASE32`
+- `UNKNOWN_PREFIX`

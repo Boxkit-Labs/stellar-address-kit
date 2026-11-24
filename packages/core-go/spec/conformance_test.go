@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Boxkit-Labs/stellar-address-kit/packages/core-go/address"
 	"github.com/Boxkit-Labs/stellar-address-kit/packages/core-go/muxed"
 	"github.com/Boxkit-Labs/stellar-address-kit/packages/core-go/routing"
 )
@@ -224,6 +225,8 @@ func TestSpecRoutingVectorsHoldTheCanonicalizationInvariants(t *testing.T) {
 				MemoType:      optionalString(c.Input["memoType"]),
 				MemoValue:     optionalString(c.Input["memoValue"]),
 				SourceAccount: optionalString(c.Input["sourceAccount"]),
+				MinSeverityLevel: address.WarningSeverity(
+					optionalString(c.Input["minSeverityLevel"])),
 			})
 
 			if base := result.DestinationBaseAccount; base != strings.ToUpper(base) {

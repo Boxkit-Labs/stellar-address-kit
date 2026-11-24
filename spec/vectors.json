@@ -408,6 +408,221 @@
         "regression",
         "interop"
       ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "lowercase G destination emits NON_CANONICAL_ADDRESS with normalization payload",
+      "input": {
+        "destination": "gaycuyt553c5lhve2xpw5gmejt4bxgm7ahmjwlapzp53kjo7eiqadrsi",
+        "memoType": "none"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": null,
+        "routingSource": "none",
+        "warnings": [
+          {
+            "code": "NON_CANONICAL_ADDRESS",
+            "severity": "warn",
+            "message": "Address normalized to uppercase",
+            "normalization": {
+              "original": "gaycuyt553c5lhve2xpw5gmejt4bxgm7ahmjwlapzp53kjo7eiqadrsi",
+              "normalized": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI"
+            }
+          }
+        ]
+      },
+      "tags": [
+        "negative",
+        "edge"
+      ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "minSeverityLevel info (default) keeps info and warn warnings in emission order",
+      "input": {
+        "destination": " gaycuyt553c5lhve2xpw5gmejt4bxgm7ahmjwlapzp53kjo7eiqadrsi ",
+        "memoType": "id",
+        "memoValue": "0042",
+        "minSeverityLevel": "info"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": "42",
+        "routingSource": "memo",
+        "warnings": [
+          {
+            "code": "SANITIZED_HIDDEN_CHARS",
+            "severity": "info",
+            "message": "Destination was sanitized by removing hidden characters and surrounding whitespace."
+          },
+          {
+            "code": "NON_CANONICAL_ADDRESS",
+            "severity": "warn",
+            "message": "Address normalized to uppercase",
+            "normalization": {
+              "original": "gaycuyt553c5lhve2xpw5gmejt4bxgm7ahmjwlapzp53kjo7eiqadrsi",
+              "normalized": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI"
+            }
+          },
+          {
+            "code": "NON_CANONICAL_ROUTING_ID",
+            "severity": "warn",
+            "message": "Memo routing ID had leading zeros. Normalized to canonical decimal.",
+            "normalization": {
+              "original": "0042",
+              "normalized": "42"
+            }
+          }
+        ]
+      },
+      "tags": [
+        "edge",
+        "regression"
+      ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "minSeverityLevel warn drops info warnings only",
+      "input": {
+        "destination": " gaycuyt553c5lhve2xpw5gmejt4bxgm7ahmjwlapzp53kjo7eiqadrsi ",
+        "memoType": "id",
+        "memoValue": "0042",
+        "minSeverityLevel": "warn"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": "42",
+        "routingSource": "memo",
+        "warnings": [
+          {
+            "code": "NON_CANONICAL_ADDRESS",
+            "severity": "warn",
+            "message": "Address normalized to uppercase",
+            "normalization": {
+              "original": "gaycuyt553c5lhve2xpw5gmejt4bxgm7ahmjwlapzp53kjo7eiqadrsi",
+              "normalized": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI"
+            }
+          },
+          {
+            "code": "NON_CANONICAL_ROUTING_ID",
+            "severity": "warn",
+            "message": "Memo routing ID had leading zeros. Normalized to canonical decimal.",
+            "normalization": {
+              "original": "0042",
+              "normalized": "42"
+            }
+          }
+        ]
+      },
+      "tags": [
+        "edge",
+        "regression"
+      ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "minSeverityLevel error drops info and warn warnings without changing routing",
+      "input": {
+        "destination": " gaycuyt553c5lhve2xpw5gmejt4bxgm7ahmjwlapzp53kjo7eiqadrsi ",
+        "memoType": "id",
+        "memoValue": "0042",
+        "minSeverityLevel": "error"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": "42",
+        "routingSource": "memo",
+        "warnings": []
+      },
+      "tags": [
+        "edge",
+        "regression"
+      ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "MEMO_HASH is reported as UNSUPPORTED_MEMO_TYPE with memoType context",
+      "input": {
+        "destination": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "memoType": "hash",
+        "memoValue": "0000000000000000000000000000000000000000000000000000000000000001"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": null,
+        "routingSource": "none",
+        "warnings": [
+          {
+            "code": "UNSUPPORTED_MEMO_TYPE",
+            "severity": "warn",
+            "message": "Memo type hash is not supported for routing.",
+            "context": {
+              "memoType": "hash"
+            }
+          }
+        ]
+      },
+      "tags": [
+        "negative",
+        "edge"
+      ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "MEMO_RETURN is reported as UNSUPPORTED_MEMO_TYPE with memoType context",
+      "input": {
+        "destination": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "memoType": "return",
+        "memoValue": "0000000000000000000000000000000000000000000000000000000000000001"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": null,
+        "routingSource": "none",
+        "warnings": [
+          {
+            "code": "UNSUPPORTED_MEMO_TYPE",
+            "severity": "warn",
+            "message": "Memo type return is not supported for routing.",
+            "context": {
+              "memoType": "return"
+            }
+          }
+        ]
+      },
+      "tags": [
+        "negative",
+        "edge"
+      ]
+    },
+    {
+      "module": "extract_routing",
+      "description": "unrecognized memo type is reported as UNSUPPORTED_MEMO_TYPE with memoType unknown",
+      "input": {
+        "destination": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "memoType": "carrier_pigeon",
+        "memoValue": "x"
+      },
+      "expected": {
+        "destinationBaseAccount": "GAYCUYT553C5LHVE2XPW5GMEJT4BXGM7AHMJWLAPZP53KJO7EIQADRSI",
+        "routingId": null,
+        "routingSource": "none",
+        "warnings": [
+          {
+            "code": "UNSUPPORTED_MEMO_TYPE",
+            "severity": "warn",
+            "message": "Unrecognized memo type: carrier_pigeon",
+            "context": {
+              "memoType": "unknown"
+            }
+          }
+        ]
+      },
+      "tags": [
+        "negative",
+        "edge"
+      ]
     }
   ]
 }

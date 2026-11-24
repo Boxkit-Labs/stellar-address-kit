@@ -37,7 +37,7 @@ void main() {
       expect(result.source, RoutingSource.memo);
       expect(result.destinationError, isNull);
       expect(result.warnings, hasLength(1));
-      expect(result.warnings.first.code, 'memo-ignored');
+      expect(result.warnings.first.code, 'MEMO_IGNORED_FOR_MUXED');
     });
 
     test('keeps muxed decode valid when external memo is unroutable', () {
@@ -55,7 +55,7 @@ void main() {
       expect(result.destinationError, isNull);
       expect(
         result.warnings.map((warning) => warning.code),
-        ['memo-ignored', 'MEMO_TEXT_UNROUTABLE'],
+        ['MEMO_IGNORED_FOR_MUXED', 'MEMO_TEXT_UNROUTABLE'],
       );
     });
 
@@ -105,7 +105,7 @@ void main() {
       expect(result.id, isNull);
       expect(result.destinationError, isNull);
       expect(result.warnings, hasLength(1));
-      expect(result.warnings.single.code, 'contract-sender');
+      expect(result.warnings.single.code, 'CONTRACT_SENDER_DETECTED');
     });
 
     test(
@@ -125,7 +125,7 @@ void main() {
       expect(result.id, isNull);
       expect(result.destinationError, isNull);
       expect(result.warnings, hasLength(1));
-      expect(result.warnings.single.code, 'contract-sender');
+      expect(result.warnings.single.code, 'CONTRACT_SENDER_DETECTED');
     });
 
     test('ignores non-C-address source accounts', () {
@@ -172,7 +172,7 @@ void main() {
             result.source == RoutingSource.memo &&
             result.destinationError == null &&
             result.warnings.length == 1 &&
-            result.warnings.first.code == 'memo-ignored')),
+            result.warnings.first.code == 'MEMO_IGNORED_FOR_MUXED')),
       );
     });
 
@@ -189,7 +189,7 @@ void main() {
             result.source == RoutingSource.none &&
             result.destinationError == null &&
             result.warnings.length == 2 &&
-            result.warnings[0].code == 'memo-ignored' &&
+            result.warnings[0].code == 'MEMO_IGNORED_FOR_MUXED' &&
             result.warnings[1].code == 'MEMO_TEXT_UNROUTABLE')),
       );
     });
@@ -242,7 +242,7 @@ void main() {
             result.id == null &&
             result.destinationError == null &&
             result.warnings.length == 1 &&
-            result.warnings.single.code == 'contract-sender')),
+            result.warnings.single.code == 'CONTRACT_SENDER_DETECTED')),
       );
     });
 
@@ -262,7 +262,7 @@ void main() {
             result.id == null &&
             result.destinationError == null &&
             result.warnings.length == 1 &&
-            result.warnings.single.code == 'contract-sender')),
+            result.warnings.single.code == 'CONTRACT_SENDER_DETECTED')),
       );
     });
   });

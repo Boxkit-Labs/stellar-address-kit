@@ -92,6 +92,7 @@ void main() {
               memoType: input['memoType'].toString(),
               memoValue: input['memoValue']?.toString(),
               sourceAccount: input['sourceAccount']?.toString(),
+              minSeverityLevel: input['minSeverityLevel']?.toString(),
             );
 
             try {
@@ -111,11 +112,12 @@ void main() {
               if (expected.containsKey('warnings')) {
                 final List<dynamic> expectedWarnings =
                     expected['warnings'] as List<dynamic>;
-                expect(result.warnings.length, expectedWarnings.length);
-                for (var i = 0; i < expectedWarnings.length; i++) {
-                  final eW = expectedWarnings[i] as Map<String, dynamic>;
-                  expect(result.warnings[i].code, eW['code']);
-                }
+                // Full structural comparison (code, severity, message,
+                // normalization, context) for parity with core-ts and core-go.
+                expect(
+                  result.warnings.map((w) => w.toJson()).toList(),
+                  expectedWarnings,
+                );
               }
 
               if (expected.containsKey('destinationError')) {

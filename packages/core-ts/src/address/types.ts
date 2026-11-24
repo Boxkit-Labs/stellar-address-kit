@@ -7,6 +7,13 @@ export type AddressKind = "G" | "M" | "C";
  */
 export type WarningSeverity = "info" | "warn" | "error";
 
+/** Every severity level, ordered from least to most severe. */
+export const WARNING_SEVERITIES: readonly WarningSeverity[] = Object.freeze([
+  "info",
+  "warn",
+  "error",
+] as const);
+
 export type WarningCode =
   | "NON_CANONICAL_ADDRESS"
   | "NON_CANONICAL_ROUTING_ID"

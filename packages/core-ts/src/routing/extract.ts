@@ -3,13 +3,7 @@ import { Warning, WarningSeverity } from "../address/types";
 import { parse } from "../address/parse";
 import { AddressParseError } from "../address/errors";
 import { normalizeMemoTextId } from "./memo";
-import { WARNING_MESSAGES } from "./warnings";
-
-const SEVERITY_ORDER: Record<WarningSeverity, number> = {
-  info: 0,
-  warn: 1,
-  error: 2,
-};
+import { WARNING_MESSAGES, filterWarningsBySeverity } from "./warnings";
 
 // Stellar StrKeys contain printable ASCII only. Strip Unicode characters that
 // cannot be rendered (category C), line/paragraph separators, and default-
@@ -33,8 +27,7 @@ function filterBySeverity(
   warnings: Warning[],
   minSeverity: WarningSeverity
 ): Warning[] {
-  const threshold = SEVERITY_ORDER[minSeverity];
-  return warnings.filter((w) => SEVERITY_ORDER[w.severity] >= threshold);
+  return filterWarningsBySeverity(warnings, minSeverity);
 }
 
 export class ExtractRoutingError extends Error {
@@ -256,20 +249,26 @@ export function extractRouting(
     if (config?.allowHashRouting && HEX_HASH_REGEX.test(rawValue)) {
       routingId = rawValue.toLowerCase();
       routingSource = "memo";
-    } else {
+    } else if (config?.allowHashRouting) {
       warnings.push({
         code: "MEMO_TEXT_UNROUTABLE",
         severity: "warn",
-        message: config?.allowHashRouting
-          ? `Memo type ${input.memoType} must be a 32-byte hex string for routing.`
-          : `Memo type ${input.memoType} is not supported for routing.`,
+        message: `Memo type ${input.memoType} must be a 32-byte hex string for routing.`,
+      });
+    } else {
+      warnings.push({
+        code: "UNSUPPORTED_MEMO_TYPE",
+        severity: "warn",
+        message: `Memo type ${input.memoType} is not supported for routing.`,
+        context: { memoType: input.memoType },
       });
     }
   } else if (input.memoType !== "none") {
     warnings.push({
-      code: "MEMO_TEXT_UNROUTABLE",
+      code: "UNSUPPORTED_MEMO_TYPE",
       severity: "warn",
       message: `Unrecognized memo type: ${input.memoType}`,
+      context: { memoType: "unknown" },
     });
   }
 

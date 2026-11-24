@@ -25,7 +25,7 @@ WarnMemoIDInvalidFormat    WarningCode = "MEMO_ID_INVALID_FORMAT"
 type Warning struct {
 	Code          WarningCode     `json:"code"`
 	Message       string          `json:"message"`
-	Severity      string          `json:"severity"`
+	Severity      WarningSeverity `json:"severity"`
 	Normalization *Normalization  `json:"normalization,omitempty"`
 	Context       *WarningContext `json:"context,omitempty"`
 	
@@ -45,7 +45,7 @@ type WarningContext struct {
 type warningJSON struct {
 	Code          WarningCode         `json:"code"`
 	Message       string              `json:"message"`
-	Severity      string              `json:"severity"`
+	Severity      WarningSeverity     `json:"severity"`
 	Normalization *Normalization      `json:"normalization,omitempty"`
 	Context       *warningContextJSON `json:"context,omitempty"`
 	
@@ -159,6 +159,9 @@ func (w Warning) validate(raw map[string]json.RawMessage) error {
 	}
 	if len(bytes.TrimSpace(raw["severity"])) == 0 {
 		return fmt.Errorf("warning %q: missing required field \"severity\"", w.Code)
+	}
+	if !w.Severity.IsValid() {
+		return fmt.Errorf("warning %q: invalid severity %q", w.Code, w.Severity)
 	}
 
 	if w.usesNormalization() {

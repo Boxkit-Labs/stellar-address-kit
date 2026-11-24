@@ -13,6 +13,10 @@ type RoutingInput struct {
 	MemoType      string `json:"memoType,omitempty"`
 	MemoValue     string `json:"memoValue,omitempty"`
 	SourceAccount string `json:"sourceAccount,omitempty"`
+
+	// MinSeverityLevel drops warnings below this severity from the result.
+	// Empty (the default) or an unrecognised value keeps every warning.
+	MinSeverityLevel address.WarningSeverity `json:"minSeverityLevel,omitempty"`
 }
 
 // RoutingResult represents routing output data.

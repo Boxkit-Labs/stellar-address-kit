@@ -72,6 +72,9 @@ describe("Normative Vector Tests", () => {
             memoType: input.memoType,
             memoValue: input.memoValue || null,
             sourceAccount: input.sourceAccount || null,
+            ...(input.minSeverityLevel
+              ? { minSeverityLevel: input.minSeverityLevel }
+              : {}),
           };
           if (routingInput.destination.startsWith("C")) {
             expect(() => extractRouting(routingInput)).toThrow(ExtractRoutingError);
