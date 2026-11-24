@@ -129,9 +129,12 @@ func TestParseMuxedAddressEdgeCases(t *testing.T) {
 			shouldFail: true,
 		},
 		{
-			name:       "reject M-address with lowercase payload",
-			mAddress:   "maycuyt553c5lhve2xpw5gmejt4bxgm7ahmjwlapzp53kjo7eiqacaaaaaaaaaaaad672",
-			shouldFail: true,
+			// Parse normalizes case, matching core-ts and the spec vectors
+			// (lowercase input is accepted and canonicalized to uppercase).
+			name:      "normalize M-address with lowercase payload",
+			mAddress:  "maycuyt553c5lhve2xpw5gmejt4bxgm7ahmjwlapzp53kjo7eiqacaaaaaaaaaaaad672",
+			wantBaseG: baseG,
+			wantMuxed: 0,
 		},
 		{
 			name:       "reject M-address with zero-width space",

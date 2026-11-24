@@ -70,6 +70,7 @@
       "pages": [
         "docs/api-reference/extract-routing",
         "docs/api-reference/parse",
+        "docs/api-reference/resolve-federation-address",
         "docs/api-reference/types"
       ]
     },

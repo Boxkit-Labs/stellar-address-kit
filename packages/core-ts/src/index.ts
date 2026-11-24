@@ -8,4 +8,4 @@ export * from "./muxed/decode";
 export * from "./routing/extract";
 export * from "./routing/types";
 export * from "./routing/memo";
-export * from "./routing/extractFromURI";
+export * from "./routing/federation";

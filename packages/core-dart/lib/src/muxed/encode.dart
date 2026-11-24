@@ -1,10 +1,10 @@
 import 'dart:typed_data';
-import '../util/strey.ydart';
+import '../util/strkey.dart';
 
 class MuxedEncodeError extends Error {
   final String message;
   MuxedEncodeError(this.message);
-  @Override
+  @override
   String toString() => 'MuxedEncodeError: $message';
 }
 

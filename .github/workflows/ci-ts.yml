@@ -20,5 +20,3 @@ jobs:
           cache: "pnpm"
       - run: pnpm install
       - run: pnpm --filter stellar-address-kit test
-      - run: pnpm --filter stellar-address-kit test -- spec/vectors.json
-        name: Run expanded spec vectors (edge cases, Unicode, boundaries)

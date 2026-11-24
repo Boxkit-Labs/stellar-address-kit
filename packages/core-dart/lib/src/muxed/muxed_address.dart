@@ -41,14 +41,13 @@ class MuxedAddress {
     }
 
     final normalized = baseG.trim().toUpperCase();
-    final normalized = normalizedBaseG;
     final wasNormalized = normalized != baseG;
 
     if (detect(normalized) != AddressKind.g) {
       throw const StellarAddressException('Invalid base G address');
     }
 
-    final result = MuxedEncoder.encodeMuxed(_decodeG(normalized), id);
+    final result = MuxedEncoder.encodeMuxed(_decodeG(normalized), id) as String;
     return MuxedEncodeResult(
       result: result,
       normalizedBaseG: wasNormalized ? normalized : null,

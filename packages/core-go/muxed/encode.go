@@ -34,7 +34,7 @@ func EncodeMuxedWithMetadata(baseG string, id string) (EncodeResult, error) {
 		return EncodeResult{}, fmt.Errorf("Invalid muxed account id %q", id)
 	}
 	if idInt.Sign() < 0 || idInt.BitLen() > 64 {
-		return EncodeResult{}, fmt.Error("Muxed account id %q exceeds uint64", id)
+		return EncodeResult{}, fmt.Errorf("Muxed account id %q exceeds uint64", id)
 	}
 
 	normalized := strings.TrimSpace(baseG)
@@ -43,7 +43,7 @@ func EncodeMuxedWithMetadata(baseG string, id string) (EncodeResult, error) {
 
 	var muxedAccount strkey.MuxedAccount
 	if err := muxedAccount.SetAccountID(upper); err != nil {
-		return EncodeResult{}, erz
+		return EncodeResult{}, err
 	}
 
 	muxedAccount.SetID(idInt.Uint64())

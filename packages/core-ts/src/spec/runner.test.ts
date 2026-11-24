@@ -39,8 +39,10 @@ describe("Normative Vector Tests", () => {
     it(`[${c.module}] ${c.description}`, () => {
       switch (c.module) {
         case "detect": {
+          // The vectors use null for "not an address"; core-ts reports the
+          // same outcome with the "invalid" sentinel.
           const kind = detect(c.input.address);
-          expect(kind).toBe(c.expected.kind);
+          expect(kind === "invalid" ? null : kind).toBe(c.expected.kind);
           break;
         }
         case "muxed_encode": {
@@ -87,6 +89,8 @@ describe("Normative Vector Tests", () => {
           expect(result.warnings).toEqual(c.expected.warnings);
           break;
         }
+        default:
+          throw new Error(`Unhandled vector module "${c.module}"`);
       }
     });
   });

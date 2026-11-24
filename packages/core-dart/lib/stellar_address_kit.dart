@@ -12,6 +12,7 @@ export 'src/routing/extract.dart';
 export 'src/routing/uri.dart';
 export 'src/routing/routing_result.dart';
 export 'src/routing/memo.dart';
+export 'src/routing/memo_requirement.dart';
 export 'src/routing/safe_routing_id.dart';
 export 'src/util/web_platform.dart';
 export 'src/muxed/muxed_address.dart';
