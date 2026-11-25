@@ -371,3 +371,48 @@ func TestExtractRoutingFromTx_MapPayload(t *testing.T) {
 		t.Errorf("expected routing source memo, got %s", res.RoutingSource)
 	}
 }
+
+func TestExtractRoutingFromTx_MapPayload_ToMuxedPrecedence(t *testing.T) {
+	// Horizon payment resource with both to (base G) and to_muxed (muxed M), no memo.
+	mapTx := map[string]any{
+		"source_account": "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
+		"memo_type":      "none",
+		"operations": []any{
+			map[string]any{
+				"type":     "payment",
+				"to":       testBaseG,
+				"to_muxed": testMuxed,
+			},
+			map[string]any{
+				"type":     "path_payment_strict_receive",
+				"to":       testBaseG,
+				"to_muxed": "",
+			},
+		},
+	}
+
+	res, err := ExtractRoutingFromTx(mapTx)
+	if err != nil || res == nil {
+		t.Fatalf("failed on Horizon map with to_muxed: %v", err)
+	}
+	if res.DestinationBaseAccount != testBaseG {
+		t.Errorf("expected %s, got %s", testBaseG, res.DestinationBaseAccount)
+	}
+	if res.RoutingSource != "muxed" {
+		t.Errorf("expected routing source muxed, got %s", res.RoutingSource)
+	}
+	if res.RoutingID == nil || res.RoutingID.String() != "9007199254740993" {
+		t.Errorf("expected routing ID 9007199254740993, got %v", res.RoutingID)
+	}
+
+	allRes, err := ExtractAllRoutingFromTx(mapTx)
+	if err != nil || len(allRes) != 2 {
+		t.Fatalf("expected 2 results, got %d (err=%v)", len(allRes), err)
+	}
+	if allRes[0].Result.RoutingSource != "muxed" {
+		t.Errorf("expected op 0 routing source muxed, got %s", allRes[0].Result.RoutingSource)
+	}
+	if allRes[1].Result.RoutingSource != "none" || allRes[1].Result.DestinationBaseAccount != testBaseG {
+		t.Errorf("expected op 1 fallback to baseG with source none, got %+v", allRes[1].Result)
+	}
+}

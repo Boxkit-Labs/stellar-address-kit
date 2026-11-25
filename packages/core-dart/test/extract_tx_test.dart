@@ -282,5 +282,86 @@ void main() {
       expect(result.source, RoutingSource.memo);
       expect(result.id, BigInt.from(777));
     });
+
+    test('prefers nonempty to_muxed over to/destination in Horizon operation maps', () {
+      final mapTx = {
+        'source_account': 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
+        'memo_type': 'none',
+        'operations': [
+          {
+            'type': 'payment',
+            'to': baseG,
+            'to_muxed': muxedM,
+          },
+          {
+            'type': 'path_payment_strict_receive',
+            'to': baseG,
+            'to_muxed': '',
+          },
+        ],
+      };
+
+      final res0 = extractRoutingFromTx(mapTx);
+      expect(res0, isNotNull);
+      expect(res0!.destinationBaseAccount, baseG);
+      expect(res0.source, RoutingSource.muxed);
+      expect(res0.id, BigInt.parse('9007199254740993'));
+
+      final all = extractAllRoutingFromTx(mapTx);
+      expect(all.length, 2);
+      expect(all[0].result.source, RoutingSource.muxed);
+      expect(all[0].result.id, BigInt.parse('9007199254740993'));
+      expect(all[1].result.source, RoutingSource.none);
+      expect(all[1].result.destinationBaseAccount, baseG);
+    });
+
+    test('decodes Horizon transaction maps containing only envelope_xdr', () {
+      // V1 tx: Payment to muxedM with MemoID(999)
+      const tx1Xdr =
+          'AAAAAgAAAABCPn0F8uyvv+wZKyFaPxvpau242OcCVKvjQT4CB95WsgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAPnAAAAAQAAAAAAAAABAAABAAAgAAAAAAABMCpife7F1Z6k1d9umYRM+BuZnwHYmywPy/u1Jd8iIAEAAAAAAAAAAAX14QAAAAAAAAAAAA==';
+      // V1 tx: [CreateAccount, ChangeTrust, Payment(baseG), PathPaymentStrictSend(muxedM)] with MemoText("555")
+      const tx2Xdr =
+          'AAAAAgAAAABCPn0F8uyvv+wZKyFaPxvpau242OcCVKvjQT4CB95WsgAAAZAAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAM1NTUAAAAABAAAAAAAAAAAAAAAADAqYn3uxdWepNXfbpmETPgbmZ8B2JssD8v7tSXfIiABAAAAAAL68IAAAAAAAAAABgAAAAFVU0RDAAAAADAqYn3uxdWepNXfbpmETPgbmZ8B2JssD8v7tSXfIiABAAAAAlQL5AAAAAAAAAAAAQAAAAAwKmJ97sXVnqTV326ZhEz4G5mfAdibLA/L+7Ul3yIgAQAAAAAAAAAABfXhAAAAAAAAAAANAAAAAAAAAAAL68IAAAABAAAgAAAAAAABMCpife7F1Z6k1d9umYRM+BuZnwHYmywPy/u1Jd8iIAEAAAAAAAAAAAjw0YAAAAAAAAAAAAAAAAA=';
+      // FeeBump wrapping tx1Xdr
+      const feeBumpXdr =
+          'AAAABQAAAAAwKmJ97sXVnqTV326ZhEz4G5mfAdibLA/L+7Ul3yIgAQAAAAAAAAGQAAAAAgAAAABCPn0F8uyvv+wZKyFaPxvpau242OcCVKvjQT4CB95WsgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAPnAAAAAQAAAAAAAAABAAABAAAgAAAAAAABMCpife7F1Z6k1d9umYRM+BuZnwHYmywPy/u1Jd8iIAEAAAAAAAAAAAX14QAAAAAAAAAAAAAAAAAAAAAA';
+
+      final horizonTx1 = {
+        'envelope_xdr': tx1Xdr,
+        'operation_count': 1,
+        '_links': {
+          'operations': {'href': 'https://horizon.stellar.org/transactions/1/operations'}
+        },
+      };
+      final res1 = extractRoutingFromTx(horizonTx1);
+      expect(res1, isNotNull);
+      expect(res1!.destinationBaseAccount, baseG);
+      expect(res1.source, RoutingSource.muxed);
+      expect(res1.id, BigInt.parse('9007199254740993'));
+      expect(res1.warnings.map((w) => w.code), contains('memo-ignored'));
+
+      final horizonTx2 = {
+        'envelope_xdr': tx2Xdr,
+        'operation_count': 4,
+      };
+      expect(extractRoutingFromTx(horizonTx2, operationIndex: 0), isNull);
+      expect(extractRoutingFromTx(horizonTx2, operationIndex: 1), isNull);
+      final all2 = extractAllRoutingFromTx(horizonTx2);
+      expect(all2.length, 2);
+      expect(all2[0].operationIndex, 2);
+      expect(all2[0].result.destinationBaseAccount, baseG);
+      expect(all2[0].result.source, RoutingSource.memo);
+      expect(all2[0].result.id, BigInt.from(555));
+      expect(all2[1].operationIndex, 3);
+      expect(all2[1].result.source, RoutingSource.muxed);
+      expect(all2[1].result.id, BigInt.parse('9007199254740993'));
+
+      final horizonFeeBump = {'envelope_xdr': feeBumpXdr};
+      final resFb = extractRoutingFromTx(horizonFeeBump);
+      expect(resFb, isNotNull);
+      expect(resFb!.destinationBaseAccount, baseG);
+      expect(resFb.source, RoutingSource.muxed);
+      expect(resFb.id, BigInt.parse('9007199254740993'));
+    });
   });
 }

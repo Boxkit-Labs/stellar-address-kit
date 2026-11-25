@@ -1,5 +1,6 @@
 import 'extract.dart';
 import 'routing_result.dart';
+import 'tx_xdr.dart';
 
 /// A routing result paired with the index of the operation it was derived from.
 final class OperationRoutingResult {
@@ -133,6 +134,29 @@ dynamic _unwrapTransaction(dynamic tx) {
     if (tx is Map) {
       final inner = tx['inner_transaction'] ?? tx['innerTransaction'];
       if (inner != null) return inner;
+      if (tx['operations'] is! List) {
+        final envelopeXdr = tx['envelope_xdr'] ?? tx['envelopeXdr'];
+        if (envelopeXdr is String && envelopeXdr.isNotEmpty) {
+          final decoded = decodeTransactionEnvelopeXdr(envelopeXdr);
+          if (decoded != null) {
+            return {
+              ...tx,
+              ...decoded.toHorizonMap(),
+            };
+          }
+        }
+      }
+    }
+  } catch (_) {}
+  try {
+    final ops = tx.operations;
+    if (ops is List) return tx;
+  } catch (_) {}
+  try {
+    final envelopeXdr = tx.envelopeXdr;
+    if (envelopeXdr is String && envelopeXdr.isNotEmpty) {
+      final decoded = decodeTransactionEnvelopeXdr(envelopeXdr);
+      if (decoded != null) return decoded.toHorizonMap();
     }
   } catch (_) {}
   return tx;
@@ -145,8 +169,13 @@ List<dynamic>? _extractOperations(dynamic tx) {
     if (ops is List) return ops;
   } catch (_) {}
   if (tx is Map) {
-    final ops = tx['operations'];
-    if (ops is List) return ops;
+    if (tx['operations'] is List) {
+      return tx['operations'] as List<dynamic>;
+    }
+    final envelopeXdr = tx['envelope_xdr'] ?? tx['envelopeXdr'];
+    if (envelopeXdr is String && envelopeXdr.isNotEmpty) {
+      return decodeTransactionEnvelopeXdr(envelopeXdr)?.operations;
+    }
   }
   return null;
 }
@@ -179,7 +208,10 @@ bool _isPaymentLike(dynamic op) {
     }
 
     // Structural checks for map payloads
-    final hasDest = op.containsKey('destination') || op.containsKey('to');
+    final hasDest = op.containsKey('to_muxed') ||
+        op.containsKey('toMuxed') ||
+        op.containsKey('destination') ||
+        op.containsKey('to');
     final hasAsset = op.containsKey('asset') ||
         op.containsKey('destAsset') ||
         op.containsKey('dest_asset') ||
@@ -232,12 +264,28 @@ String? _extractDestination(dynamic op) {
   dynamic rawDest;
   try {
     if (op is Map) {
-      rawDest = op['destination'] ?? op['to'];
+      final toMuxed = op['to_muxed'] ?? op['toMuxed'];
+      if (toMuxed is String ? toMuxed.isNotEmpty : toMuxed != null) {
+        rawDest = toMuxed;
+      } else {
+        final dest = op['destination'];
+        rawDest = (dest is String ? dest.isNotEmpty : dest != null)
+            ? dest
+            : op['to'];
+      }
     } else {
       try {
-        rawDest = op.destination;
-      } catch (_) {
-        rawDest = op.to;
+        final toMuxed = op.toMuxed;
+        if (toMuxed is String ? toMuxed.isNotEmpty : toMuxed != null) {
+          rawDest = toMuxed;
+        }
+      } catch (_) {}
+      if (rawDest == null) {
+        try {
+          rawDest = op.destination;
+        } catch (_) {
+          rawDest = op.to;
+        }
       }
     }
   } catch (_) {

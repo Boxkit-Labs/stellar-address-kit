@@ -311,7 +311,10 @@ func extractPaymentLikeMapOp(m map[string]any) (destination string, opSource str
 
 	switch opTypeNorm {
 	case "payment", "pathpaymentstrictreceive", "pathpaymentstrictsend":
-		dest, _ := m["destination"].(string)
+		dest, _ := m["to_muxed"].(string)
+		if dest == "" {
+			dest, _ = m["destination"].(string)
+		}
 		if dest == "" {
 			dest, _ = m["to"].(string)
 		}
