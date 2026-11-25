@@ -59,3 +59,43 @@ const result = extractRouting({
 // result.routingSource === "memo"
 // result.routingId === "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
 ```
+
+## SEP-0029 Memo Requirement (TypeScript)
+
+Exchanges and custodial services often set `config.memo_required` (or `config.requiring_memo`) in their account data per [SEP-0029](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md). A payment sent to such an account without a memo usually ends up as a stuck deposit.
+
+`extractRoutingAsync` runs `extractRouting` and then checks the destination against Horizon. When the account requires a memo but no routing ID was extracted, it appends:
+
+```typescript
+{ code: "MISSING_REQUIRED_MEMO", severity: "error", message: "..." }
+```
+
+```typescript
+import { extractRoutingAsync, fetchMemoRequirement } from "stellar-address-kit";
+
+const result = await extractRoutingAsync(
+  { destination: "GADDRESS...", memoType: "none", memoValue: null, sourceAccount: null },
+  { horizonUrl: "https://horizon.stellar.org", timeoutMs: 5000 }
+);
+
+// Or check an account directly:
+const required = await fetchMemoRequirement("GADDRESS...", {
+  horizonUrl: "https://horizon-testnet.stellar.org",
+});
+```
+
+| Option | Type | Description |
+|---|---|---|
+| `horizonUrl` | `string` | Horizon base URL. Defaults to `https://horizon.stellar.org`. |
+| `fetch` | `FetchLike` | Custom `fetch` implementation. Defaults to `globalThis.fetch`. |
+| `timeoutMs` | `number` | Request timeout in milliseconds. Defaults to `10000`; `0` disables it. |
+| `signal` | `AbortSignal` | Optional caller abort signal. |
+| `fetchMemoRequirement` | `(accountId) => Promise<boolean>` | Replaces the Horizon lookup, for example with a cache or an indexer. |
+| `allowHashRouting` | `boolean` | Forwarded to `extractRouting`. |
+
+Behaviour:
+
+- No lookup is made when the synchronous result already has a routing ID (including every M-address), has no base account (for example a contract sender), or reports a destination error.
+- A Horizon `404` (unfunded account) counts as "memo not required".
+- Lookup failures fail open: network errors, timeouts, non-2xx responses and unreadable bodies return the synchronous result unchanged. `fetchMemoRequirement` on its own rejects with `MemoRequirementLookupError` in these cases.
+- Values are base64-decoded, and `1` or `true` (case-insensitive) mean the memo is required.

@@ -13,4 +13,5 @@ export {
   filterWarningsBySeverity,
   severityRank,
 } from "./routing/warnings";
+export * from "./routing/memoRequirement";
 export * from "./routing/federation";
