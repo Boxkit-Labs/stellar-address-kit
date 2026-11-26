@@ -15,3 +15,4 @@ export {
 } from "./routing/warnings";
 export * from "./routing/memoRequirement";
 export * from "./routing/federation";
+export * from "./routing/extractFromTx";
