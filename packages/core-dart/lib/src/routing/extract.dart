@@ -161,17 +161,11 @@ RoutingResult extractRoutingSync(RoutingInput input) {
       );
     }
 
-    BigInt? routingId;
-    RoutingSource routingSource = RoutingSource.none;
-
     warnings.add(RoutingWarning.memoIgnored);
 
     if (input.memoType == 'id') {
       final norm = normalizeMemoId(input.memoValue ?? '');
-      if (norm.normalized != null) {
-        routingId = SafeRoutingId.tryParse(norm.normalized!)?.toBigInt;
-        routingSource = RoutingSource.memo;
-      } else {
+      if (norm.normalized == null) {
         warnings.add(
           const RoutingWarning(
             code: codes.WarningCode.memoIdInvalidFormat,
@@ -189,10 +183,7 @@ RoutingResult extractRoutingSync(RoutingInput input) {
       }
     } else if (input.memoType == 'text' && input.memoValue != null) {
       final norm = normalizeMemoTextId(input.memoValue!);
-      if (norm.normalized != null) {
-        routingId = SafeRoutingId.tryParse(norm.normalized!)?.toBigInt;
-        routingSource = RoutingSource.memo;
-      } else {
+      if (norm.normalized == null) {
         warnings.add(
           const RoutingWarning(
             code: codes.WarningCode.memoTextUnroutable,
@@ -228,8 +219,8 @@ RoutingResult extractRoutingSync(RoutingInput input) {
 
     return RoutingResult(
       destinationBaseAccount: baseG,
-      id: routingId,
-      source: routingSource,
+      id: muxedId,
+      source: RoutingSource.muxed,
       warnings: warnings,
     );
   }

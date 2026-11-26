@@ -22,7 +22,7 @@ void main() {
     });
 
     test(
-        'prefers external memo over muxed routing and emits memo-ignored warning',
+        'prefers muxed routing over external memo and emits memo-ignored warning',
         () {
       final result = extractRoutingSync(
         RoutingInput(
@@ -33,8 +33,8 @@ void main() {
       );
 
       expect(result.destinationBaseAccount, baseG);
-      expect(result.id, BigInt.from(42));
-      expect(result.source, RoutingSource.memo);
+      expect(result.id, BigInt.parse('9007199254740993'));
+      expect(result.source, RoutingSource.muxed);
       expect(result.destinationError, isNull);
       expect(result.warnings, hasLength(1));
       expect(result.warnings.first.code, 'memo-ignored');
@@ -50,8 +50,8 @@ void main() {
       );
 
       expect(result.destinationBaseAccount, baseG);
-      expect(result.id, isNull);
-      expect(result.source, RoutingSource.none);
+      expect(result.id, BigInt.parse('9007199254740993'));
+      expect(result.source, RoutingSource.muxed);
       expect(result.destinationError, isNull);
       expect(
         result.warnings.map((warning) => warning.code),
@@ -158,7 +158,7 @@ void main() {
     });
 
     test(
-        'prefers external memo over muxed routing and emits memo-ignored warning',
+        'prefers muxed routing over external memo and emits memo-ignored warning',
         () async {
       await expectLater(
         extractRouting(RoutingInput(
@@ -168,8 +168,8 @@ void main() {
         )),
         completion(predicate((RoutingResult result) =>
             result.destinationBaseAccount == baseG &&
-            result.id == BigInt.from(42) &&
-            result.source == RoutingSource.memo &&
+            result.id == BigInt.parse('9007199254740993') &&
+            result.source == RoutingSource.muxed &&
             result.destinationError == null &&
             result.warnings.length == 1 &&
             result.warnings.first.code == 'memo-ignored')),
@@ -185,8 +185,8 @@ void main() {
         )),
         completion(predicate((RoutingResult result) =>
             result.destinationBaseAccount == baseG &&
-            result.id == null &&
-            result.source == RoutingSource.none &&
+            result.id == BigInt.parse('9007199254740993') &&
+            result.source == RoutingSource.muxed &&
             result.destinationError == null &&
             result.warnings.length == 2 &&
             result.warnings[0].code == 'memo-ignored' &&
