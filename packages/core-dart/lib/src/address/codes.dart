@@ -67,8 +67,65 @@ abstract final class WarningCode {
   /// The destination is a smart contract, which is invalid for classic payments.
   static const invalidDestination = 'INVALID_DESTINATION';
 
+  /// SEP-0029: the destination requires a memo but no routing ID was supplied.
+  static const missingRequiredMemo = 'MISSING_REQUIRED_MEMO';
+
   /// Hidden/non-printable characters or surrounding whitespace were removed.
   static const sanitizedHiddenChars = 'SANITIZED_HIDDEN_CHARS';
+}
+
+/// Severity levels shared by every Stellar Address Kit implementation
+/// (TypeScript, Go, Dart).
+///
+/// Use with [RoutingInput.minSeverityLevel] to drop lower-severity warnings.
+abstract final class WarningSeverity {
+  /// Informational; the input was adjusted or carries no risk.
+  static const info = 'info';
+
+  /// Potential integration issue worth logging.
+  static const warn = 'warn';
+
+  /// The payment cannot be credited safely as-is.
+  static const error = 'error';
+
+  /// Every level, from least to most severe.
+  static const values = [info, warn, error];
+
+  /// Ranks a severity: info (0) < warn (1) < error (2). Unrecognised values
+  /// (including `null`) rank as info so a filter never silently drops them.
+  static int rank(String? severity) {
+    switch (severity) {
+      case warn:
+        return 1;
+      case error:
+        return 2;
+      default:
+        return 0;
+    }
+  }
+
+  /// Whether [severity] is at or above [minSeverityLevel]. A `null` or
+  /// unrecognised threshold admits everything.
+  static bool meets(String? severity, String? minSeverityLevel) =>
+      rank(severity) >= rank(minSeverityLevel);
+
+  /// The canonical severity for a [WarningCode], or `null` for an unknown code.
+  /// Mirrors `WARNING_SEVERITY` (core-ts) and `address.DefaultSeverity` (core-go).
+  static String? forCode(String code) => _byCode[code];
+
+  static const Map<String, String> _byCode = {
+    WarningCode.sanitizedHiddenChars: info,
+    WarningCode.contractSenderDetected: info,
+    WarningCode.memoIgnoredForMuxed: info,
+    WarningCode.nonCanonicalAddress: warn,
+    WarningCode.nonCanonicalRoutingId: warn,
+    WarningCode.memoPresentWithMuxed: warn,
+    WarningCode.memoTextUnroutable: warn,
+    WarningCode.memoIdInvalidFormat: warn,
+    WarningCode.unsupportedMemoType: warn,
+    WarningCode.invalidDestination: error,
+    WarningCode.missingRequiredMemo: error,
+  };
 }
 
 /// Represents a warning encountered during address parsing or routing.
@@ -105,7 +162,22 @@ class Normalization {
   /// The normalized canonical representation.
   final String normalized;
 
-  Normalization({required this.original, required this.normalized});
+  const Normalization({required this.original, required this.normalized});
+
+  Map<String, String> toJson() =>
+      {'original': original, 'normalized': normalized};
+
+  @override
+  bool operator ==(Object other) =>
+      other is Normalization &&
+      other.original == original &&
+      other.normalized == normalized;
+
+  @override
+  int get hashCode => Object.hash(original, normalized);
+
+  @override
+  String toString() => 'Normalization($original -> $normalized)';
 }
 
 /// Contextual details for specific warning types.
@@ -116,7 +188,24 @@ class WarningContext {
   /// The type of memo provided in the transaction.
   final String? memoType;
 
-  WarningContext({this.destinationKind, this.memoType});
+  const WarningContext({this.destinationKind, this.memoType});
+
+  Map<String, String> toJson() => {
+        if (destinationKind != null) 'destinationKind': destinationKind!,
+        if (memoType != null) 'memoType': memoType!,
+      };
+
+  @override
+  bool operator ==(Object other) =>
+      other is WarningContext &&
+      other.destinationKind == destinationKind &&
+      other.memoType == memoType;
+
+  @override
+  int get hashCode => Object.hash(destinationKind, memoType);
+
+  @override
+  String toString() => 'WarningContext(${toJson()})';
 }
 
 /// The result of parsing a raw Stellar address string.

@@ -4,6 +4,8 @@
 /// never have to push 64-bit routing IDs through a JS `Number`.
 library;
 
+import '../address/codes.dart'
+    show Normalization, WarningContext, WarningSeverity;
 import 'safe_routing_id.dart';
 
 /// Identifies the mechanism used to resolve a routing ID.
@@ -41,22 +43,32 @@ class RoutingWarning {
   /// A descriptive message explaining the warning.
   final String message;
 
+  /// `{ original, normalized }` payload, set for `NON_CANONICAL_ADDRESS` and
+  /// `NON_CANONICAL_ROUTING_ID`.
+  final Normalization? normalization;
+
+  /// Contextual metadata, set for `INVALID_DESTINATION` (`destinationKind`)
+  /// and `UNSUPPORTED_MEMO_TYPE` (`memoType`: hash, return or unknown).
+  final WarningContext? context;
+
   const RoutingWarning({
     required this.code,
     required this.severity,
     required this.message,
+    this.normalization,
+    this.context,
   });
 
-  /// Emitted when a memo is present but ignored because the destination is a muxed address.
+  /// Emitted when a memo is present alongside a muxed address.
   static const memoIgnored = RoutingWarning(
-    code: 'memo-ignored',
+    code: 'MEMO_IGNORED_FOR_MUXED',
     severity: 'info',
     message: 'Memo ignored for muxed address',
   );
 
   /// Emitted when the transaction sender is detected as a smart contract.
   static const contractSender = RoutingWarning(
-    code: 'contract-sender',
+    code: 'CONTRACT_SENDER_DETECTED',
     severity: 'info',
     message: 'Contract source detected. Routing state cleared.',
   );
@@ -78,6 +90,16 @@ class RoutingWarning {
         'Destination was sanitized by removing hidden characters and surrounding whitespace.',
   );
 
+  /// JSON shape shared with core-ts and core-go:
+  /// `{ code, severity, message, normalization?, context? }`.
+  Map<String, Object> toJson() => {
+        'code': code,
+        'severity': severity,
+        'message': message,
+        if (normalization != null) 'normalization': normalization!.toJson(),
+        if (context != null) 'context': context!.toJson(),
+      };
+
   @override
   String toString() => '[$severity] $code: $message';
 
@@ -88,11 +110,25 @@ class RoutingWarning {
           runtimeType == other.runtimeType &&
           code == other.code &&
           severity == other.severity &&
-          message == other.message;
+          message == other.message &&
+          normalization == other.normalization &&
+          context == other.context;
 
   @override
-  int get hashCode => Object.hash(code, severity, message);
+  int get hashCode =>
+      Object.hash(code, severity, message, normalization, context);
 }
+
+/// Returns the warnings whose severity is at least [minSeverityLevel], in
+/// their original order. A `null` or unrecognised threshold keeps every
+/// warning, so a typo in a strict configuration never hides a warning.
+List<RoutingWarning> filterWarningsBySeverity(
+  List<RoutingWarning> warnings,
+  String? minSeverityLevel,
+) =>
+    warnings
+        .where((w) => WarningSeverity.meets(w.severity, minSeverityLevel))
+        .toList();
 
 /// Details of a terminal error encountered during destination account parsing.
 class DestinationError {
@@ -128,11 +164,17 @@ class RoutingInput {
   /// The source account address of the transaction.
   final String? sourceAccount;
 
+  /// Minimum [WarningSeverity] to include in the result (`info`, `warn` or
+  /// `error`). `null` (the default) or an unrecognised value keeps every
+  /// warning.
+  final String? minSeverityLevel;
+
   RoutingInput({
     required this.destination,
     required this.memoType,
     this.memoValue,
     this.sourceAccount,
+    this.minSeverityLevel,
   });
 }
 

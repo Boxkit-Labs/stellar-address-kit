@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- **Warning severity filtering and structured payloads (#357).**
+  - Added `WarningSeverity` (`info`, `warn`, `error`) with `rank`, `meets`
+    and `forCode`, matching core-ts and core-go.
+  - Added `RoutingInput.minSeverityLevel` and `filterWarningsBySeverity`.
+  - `RoutingWarning` now carries `normalization` (`NON_CANONICAL_ADDRESS`,
+    `NON_CANONICAL_ROUTING_ID`) and `context` (`UNSUPPORTED_MEMO_TYPE`), plus
+    `toJson()`.
+  - `UNSUPPORTED_MEMO_TYPE` reports `context.memoType` (`hash`, `return`,
+    `unknown`) and names an unrecognised memo type in its message.
+  - **Breaking:** `RoutingWarning.memoIgnored` and `.contractSender` now use
+    the canonical codes `MEMO_IGNORED_FOR_MUXED` and
+    `CONTRACT_SENDER_DETECTED` instead of `memo-ignored` / `contract-sender`.
+
 ## 1.1.0
 
 - **Flutter Web precision safety for 64-bit routing IDs.**

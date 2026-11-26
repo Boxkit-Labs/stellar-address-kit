@@ -159,6 +159,8 @@ func TestSpecVectors(t *testing.T) {
 					MemoType:      optionalString(tc.Input["memoType"]),
 					MemoValue:     optionalString(tc.Input["memoValue"]),
 					SourceAccount: optionalString(tc.Input["sourceAccount"]),
+					MinSeverityLevel: address.WarningSeverity(
+						optionalString(tc.Input["minSeverityLevel"])),
 				})
 
 				if got, want := result.DestinationBaseAccount, normalizeExpectedBaseAccount(tc.Expected["destinationBaseAccount"]); got != want {

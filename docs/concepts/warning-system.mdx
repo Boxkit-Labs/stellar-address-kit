@@ -13,23 +13,109 @@ Stellar Address Kit uses a two-layered messaging system to help you integrate sa
 
 ## Severity Levels
 
-| Level | Meaning | Action |
+Every warning carries an explicit `severity`. The levels and the code-to-severity
+table are identical in TypeScript, Go, and Dart.
+
+| Level | Meaning | Typical action |
 |---|---|---|
-| **INFO** | Informational change (e.g., input was lowercase). | Safe to ignore in production. |
-| **WARN** | Potential issue (e.g., Numeric MEMO_TEXT). | Log to your monitoring system. |
-| **ERROR** | Critical issue (e.g., M-address ID overflow). | Reject the transaction. |
+| `info` | Informational; the input was adjusted or carries no risk. | Safe to ignore in production. |
+| `warn` | Potential integration issue. | Log to your monitoring system. |
+| `error` | The payment cannot be credited safely as-is. | Reject or send to manual review. |
 
-## The Warning Type (TypeScript)
+| Code | Severity | Payload |
+|---|---|---|
+| `SANITIZED_HIDDEN_CHARS` | `info` | none |
+| `CONTRACT_SENDER_DETECTED` | `info` | none |
+| `MEMO_IGNORED_FOR_MUXED` | `info` | none |
+| `NON_CANONICAL_ADDRESS` | `warn` | `normalization: { original, normalized }` |
+| `NON_CANONICAL_ROUTING_ID` | `warn` | `normalization: { original, normalized }` |
+| `MEMO_PRESENT_WITH_MUXED` | `warn` | none |
+| `MEMO_TEXT_UNROUTABLE` | `warn` | none |
+| `MEMO_ID_INVALID_FORMAT` | `warn` | none |
+| `UNSUPPORTED_MEMO_TYPE` | `warn` | `context: { memoType: 'hash' \| 'return' \| 'unknown' }` |
+| `INVALID_DESTINATION` | `error` | `context: { destinationKind: 'C' }` |
+| `MISSING_REQUIRED_MEMO` | `error` | none |
 
-Warnings are returned as a discriminated union, allowing for type-safe handling of specialized metadata.
+The table is exported as `WARNING_SEVERITY` (TypeScript), `address.DefaultSeverity`
+(Go), and `WarningSeverity.forCode` (Dart).
 
-```typescript
-type Warning = 
-  | { code: 'JS_PRECISION_LOSS'; severity: 'ERROR'; message: string }
-  | { code: 'REDUNDANT_MEMO'; severity: 'INFO'; message: string }
-  | { code: 'MEMO_TYPE_MISMATCH'; severity: 'WARN'; message: string }
-  // ... and others
+## Filtering by Severity (`minSeverityLevel`)
+
+Different systems need different thresholds: a UI form may show everything,
+while a strict accounting ledger may only care about `error`. Set
+`minSeverityLevel` on the routing input to drop lower-severity warnings. It
+changes only the `warnings` list, never the routing result.
+
+- Omitted (the default) keeps every warning.
+- `warn` drops `info`.
+- `error` keeps only `error`.
+- An unrecognised value keeps every warning, so a typo never hides one.
+
+<CodeGroup>
+
+```typescript TypeScript
+const result = extractRouting({
+  destination,
+  memoType: "id",
+  memoValue: "0042",
+  sourceAccount: null,
+  minSeverityLevel: "warn",
+});
 ```
+
+```go Go
+result := routing.ExtractRouting(routing.RoutingInput{
+	Destination:      destination,
+	MemoType:         "id",
+	MemoValue:        "0042",
+	MinSeverityLevel: address.SeverityWarn,
+})
+```
+
+```dart Dart
+final result = extractRoutingSync(RoutingInput(
+  destination: destination,
+  memoType: 'id',
+  memoValue: '0042',
+  minSeverityLevel: WarningSeverity.warn,
+));
+```
+
+</CodeGroup>
+
+The same filter is available standalone as `filterWarningsBySeverity` (TypeScript
+and Dart) and `address.FilterWarnings` (Go).
+
+## Structured Payloads
+
+Normalisation warnings say exactly what changed:
+
+```json
+{
+  "code": "NON_CANONICAL_ROUTING_ID",
+  "severity": "warn",
+  "message": "Memo routing ID had leading zeros. Normalized to canonical decimal.",
+  "normalization": { "original": "007", "normalized": "7" }
+}
+```
+
+`UNSUPPORTED_MEMO_TYPE` reports which memo type was rejected, and
+`INVALID_DESTINATION` reports that the destination was a contract (`C`) address:
+
+```json
+{
+  "code": "UNSUPPORTED_MEMO_TYPE",
+  "severity": "warn",
+  "message": "Memo type hash is not supported for routing.",
+  "context": { "memoType": "hash" }
+}
+```
+
+<Note>
+  The TypeScript and Dart `extractRouting` reject a `C` destination by throwing
+  before warnings are built. Go returns `INVALID_DESTINATION` with
+  `context.destinationKind = "C"`.
+</Note>
 
 ## The destinationError Invariant
 

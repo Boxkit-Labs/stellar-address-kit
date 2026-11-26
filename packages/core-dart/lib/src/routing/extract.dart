@@ -75,6 +75,43 @@ bool _isHiddenOrNonPrintable(int rune) {
   return false;
 }
 
+RoutingWarning _fromAddressWarning(codes.Warning w) => RoutingWarning(
+      code: w.code,
+      severity: w.severity,
+      message: w.message,
+      normalization: w.normalization,
+      context: w.context,
+    );
+
+RoutingWarning _unsupportedMemoType(String memoType) {
+  if (memoType == 'hash' || memoType == 'return') {
+    return RoutingWarning(
+      code: codes.WarningCode.unsupportedMemoType,
+      severity: codes.WarningSeverity.warn,
+      message: 'Memo type $memoType is not supported for routing.',
+      context: codes.WarningContext(memoType: memoType),
+    );
+  }
+  return RoutingWarning(
+    code: codes.WarningCode.unsupportedMemoType,
+    severity: codes.WarningSeverity.warn,
+    message: 'Unrecognized memo type: $memoType',
+    context: const codes.WarningContext(memoType: 'unknown'),
+  );
+}
+
+RoutingResult _withFilteredWarnings(RoutingResult r, String? minSeverityLevel) {
+  final filtered = filterWarningsBySeverity(r.warnings, minSeverityLevel);
+  if (filtered.length == r.warnings.length) return r;
+  return RoutingResult(
+    source: r.source,
+    id: r.id,
+    destinationBaseAccount: r.destinationBaseAccount,
+    destinationError: r.destinationError,
+    warnings: filtered,
+  );
+}
+
 /// Extracts deposit routing information from a Stellar payment input.
 /// Following the standard priority policy, M-address identifiers take
 /// precedence over any provided memo.
@@ -89,7 +126,13 @@ bool _isHiddenOrNonPrintable(int rune) {
 /// This is the synchronous variant for pure string parsing.
 /// For future compatibility with async network checks (Federation, SEP-0029),
 /// use [extractRouting] instead.
-RoutingResult extractRoutingSync(RoutingInput input) {
+///
+/// Warnings below [RoutingInput.minSeverityLevel] are removed from the
+/// result; routing fields are never affected by the threshold.
+RoutingResult extractRoutingSync(RoutingInput input) =>
+    _withFilteredWarnings(_extractRoutingAll(input), input.minSeverityLevel);
+
+RoutingResult _extractRoutingAll(RoutingInput input) {
   final sanitized = _sanitizeDestination(input.destination);
   final destination = sanitized.value;
   if (destination.isEmpty) {
@@ -140,11 +183,7 @@ RoutingResult extractRoutingSync(RoutingInput input) {
 
   final warnings = <RoutingWarning>[...sanitizationWarnings];
   for (final w in parsed.warnings) {
-    warnings.add(RoutingWarning(
-      code: w.code,
-      severity: w.severity,
-      message: w.message,
-    ));
+    warnings.add(_fromAddressWarning(w));
   }
 
   if (parsed.kind == codes.AddressKind.m) {
@@ -175,11 +214,7 @@ RoutingResult extractRoutingSync(RoutingInput input) {
         );
       }
       for (final w in norm.warnings) {
-        warnings.add(RoutingWarning(
-          code: w.code,
-          severity: w.severity,
-          message: w.message,
-        ));
+        warnings.add(_fromAddressWarning(w));
       }
     } else if (input.memoType == 'text' && input.memoValue != null) {
       final norm = normalizeMemoTextId(input.memoValue!);
@@ -193,28 +228,10 @@ RoutingResult extractRoutingSync(RoutingInput input) {
         );
       }
       for (final w in norm.warnings) {
-        warnings.add(RoutingWarning(
-          code: w.code,
-          severity: w.severity,
-          message: w.message,
-        ));
+        warnings.add(_fromAddressWarning(w));
       }
-    } else if (input.memoType == 'hash' || input.memoType == 'return') {
-      warnings.add(
-        RoutingWarning(
-          code: codes.WarningCode.unsupportedMemoType,
-          severity: 'warn',
-          message: 'Memo type ${input.memoType} is not supported for routing.',
-        ),
-      );
     } else {
-      warnings.add(
-        const RoutingWarning(
-          code: codes.WarningCode.unsupportedMemoType,
-          severity: 'warn',
-          message: 'Unrecognized memo type: unknown',
-        ),
-      );
+      warnings.add(_unsupportedMemoType(input.memoType));
     }
 
     return RoutingResult(
@@ -243,11 +260,7 @@ RoutingResult extractRoutingSync(RoutingInput input) {
       );
     }
     for (final w in norm.warnings) {
-      warnings.add(RoutingWarning(
-        code: w.code,
-        severity: w.severity,
-        message: w.message,
-      ));
+      warnings.add(_fromAddressWarning(w));
     }
   } else if (input.memoType == 'text' && input.memoValue != null) {
     final norm = normalizeMemoTextId(input.memoValue!);
@@ -264,28 +277,10 @@ RoutingResult extractRoutingSync(RoutingInput input) {
       );
     }
     for (final w in norm.warnings) {
-      warnings.add(RoutingWarning(
-        code: w.code,
-        severity: w.severity,
-        message: w.message,
-      ));
+      warnings.add(_fromAddressWarning(w));
     }
-  } else if (input.memoType == 'hash' || input.memoType == 'return') {
-    warnings.add(
-      RoutingWarning(
-        code: codes.WarningCode.unsupportedMemoType,
-        severity: 'warn',
-        message: 'Memo type ${input.memoType} is not supported for routing.',
-      ),
-    );
   } else if (input.memoType != 'none') {
-    warnings.add(
-      const RoutingWarning(
-        code: codes.WarningCode.unsupportedMemoType,
-        severity: 'warn',
-        message: 'Unrecognized memo type: unknown',
-      ),
-    );
+    warnings.add(_unsupportedMemoType(input.memoType));
   }
 
   return RoutingResult(
@@ -309,26 +304,29 @@ Future<RoutingResult> extractRouting(
   RoutingInput input, {
   MemoRequirementFetcher? fetchMemoRequirement,
 }) async {
-  final result = extractRoutingSync(input);
+  final result = _extractRoutingAll(input);
   if (fetchMemoRequirement == null ||
       result.destinationBaseAccount == null ||
       result.id != null ||
       result.destinationError != null) {
-    return result;
+    return _withFilteredWarnings(result, input.minSeverityLevel);
   }
 
   try {
     if (await fetchMemoRequirement(result.destinationBaseAccount!)) {
-      return RoutingResult(
-        source: result.source,
-        id: result.id,
-        destinationBaseAccount: result.destinationBaseAccount,
-        destinationError: result.destinationError,
-        warnings: [...result.warnings, RoutingWarning.missingRequiredMemo],
+      return _withFilteredWarnings(
+        RoutingResult(
+          source: result.source,
+          id: result.id,
+          destinationBaseAccount: result.destinationBaseAccount,
+          destinationError: result.destinationError,
+          warnings: [...result.warnings, RoutingWarning.missingRequiredMemo],
+        ),
+        input.minSeverityLevel,
       );
     }
   } catch (_) {
     // Network/configuration failures must not change the synchronous result.
   }
-  return result;
+  return _withFilteredWarnings(result, input.minSeverityLevel);
 }

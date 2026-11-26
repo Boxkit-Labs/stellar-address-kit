@@ -85,12 +85,18 @@ func normalizeUnsupportedMemoType(memoType string) string {
 // take precedence over any provided memo. Returns a RoutingResult with the decoded
 // state and applicable warnings.
 func ExtractRouting(input RoutingInput) RoutingResult {
+	result := extractRouting(input)
+	result.Warnings = address.FilterWarnings(result.Warnings, input.MinSeverityLevel)
+	return result
+}
+
+func extractRouting(input RoutingInput) RoutingResult {
 	destination, destinationSanitized := sanitizeDestination(input.Destination)
 	sanitizationWarnings := make([]address.Warning, 0, 1)
 	if destinationSanitized {
 		sanitizationWarnings = append(sanitizationWarnings, address.Warning{
 			Code:     address.WarnSanitizedHiddenChars,
-			Severity: "info",
+			Severity: address.SeverityInfo,
 			Message:  sanitizedHiddenCharsMessage,
 		})
 	}
@@ -101,7 +107,7 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 			warnings := append([]address.Warning{}, sanitizationWarnings...)
 			warnings = append(warnings, address.Warning{
 				Code:     address.WarnContractSenderDetected,
-				Severity: "info",
+				Severity: address.SeverityInfo,
 				Message:  "Contract source detected. Routing state cleared.",
 			})
 			return RoutingResult{
@@ -127,7 +133,7 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 		warnings := append([]address.Warning{}, sanitizationWarnings...)
 		warnings = append(warnings, address.Warning{
 			Code:     address.WarnInvalidDestination,
-			Severity: "error",
+			Severity: address.SeverityError,
 			Message:  "C address is not a valid destination",
 			Context: &address.WarningContext{
 				DestinationKind: "C",
@@ -162,13 +168,13 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 		if input.MemoType == "id" || (input.MemoType == "text" && isAllDigits(memoValue)) {
 			warnings = append(warnings, address.Warning{
 				Code:     address.WarnMemoPresentWithMuxed,
-				Severity: "warn",
+				Severity: address.SeverityWarn,
 				Message:  "Routing ID found in both M-address and Memo. M-address ID takes precedence.",
 			})
 		} else if input.MemoType != "none" {
 			warnings = append(warnings, address.Warning{
 				Code:     address.WarnMemoIgnoredForMuxed,
-				Severity: "info",
+				Severity: address.SeverityInfo,
 				Message:  "Memo present with M-address. Any potential routing ID in memo is ignored.",
 			})
 		}
@@ -200,7 +206,7 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 		if norm.Normalized == "" {
 			warnings = append(warnings, address.Warning{
 				Code:     address.WarnMemoIDInvalidFormat,
-				Severity: "warn",
+				Severity: address.SeverityWarn,
 				Message:  "MEMO_ID was empty, non-numeric, or exceeded uint64 max.",
 			})
 		}
@@ -213,7 +219,7 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 		} else {
 			warnings = append(warnings, address.Warning{
 				Code:     address.WarnMemoTextUnroutable,
-				Severity: "warn",
+				Severity: address.SeverityWarn,
 				Message:  "MEMO_TEXT was not a valid numeric uint64.",
 			})
 		}
@@ -228,7 +234,7 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 		}
 		warnings = append(warnings, address.Warning{
 			Code:     address.WarnUnsupportedMemoType,
-			Severity: "warn",
+			Severity: address.SeverityWarn,
 			Message:  msg,
 			Context: &address.WarningContext{
 				MemoType: unsupportedMemoType,
@@ -242,7 +248,7 @@ func ExtractRouting(input RoutingInput) RoutingResult {
 		sb.WriteString(input.MemoType)
 		warnings = append(warnings, address.Warning{
 			Code:     address.WarnUnsupportedMemoType,
-			Severity: "warn",
+			Severity: address.SeverityWarn,
 			Message:  sb.String(),
 			Context: &address.WarningContext{
 				MemoType: "unknown",
@@ -267,18 +273,18 @@ type MemoRequirementFetcher func(baseAccount string) (bool, error)
 // memo but no routing ID was supplied. Fetch failures fail open so callers
 // retain the result of the synchronous parser.
 func ExtractRoutingWithMemoRequirement(input RoutingInput, fetch MemoRequirementFetcher) RoutingResult {
-	result := ExtractRouting(input)
-	if fetch == nil || result.DestinationBaseAccount == "" || result.RoutingID != nil || result.DestinationError != nil {
-		return result
+	result := extractRouting(input)
+	if fetch != nil && result.DestinationBaseAccount != "" && result.RoutingID == nil && result.DestinationError == nil {
+		required, err := fetch(result.DestinationBaseAccount)
+		if err == nil && required {
+			result.Warnings = append(result.Warnings, address.Warning{
+				Code:     address.WarnMissingRequiredMemo,
+				Severity: address.SeverityError,
+				Message:  "Destination account requires a memo, but no routing ID was provided.",
+			})
+		}
 	}
-	required, err := fetch(result.DestinationBaseAccount)
-	if err == nil && required {
-		result.Warnings = append(result.Warnings, address.Warning{
-			Code:     address.WarnMissingRequiredMemo,
-			Severity: "error",
-			Message:  "Destination account requires a memo, but no routing ID was provided.",
-		})
-	}
+	result.Warnings = address.FilterWarnings(result.Warnings, input.MinSeverityLevel)
 	return result
 }
 

@@ -33,6 +33,17 @@ addr := &Address{
 Kind: kind,
 Raw:  raw,
 }
+if raw != input {
+addr.Warnings = append(addr.Warnings, Warning{
+Code:     WarnNonCanonicalAddress,
+Severity: SeverityWarn,
+Message:  "Address normalized to uppercase",
+Normalization: &Normalization{
+Original:   input,
+Normalized: raw,
+},
+})
+}
 
 if kind == KindM {
 versionByte, payload, err := DecodeStrKey(raw)

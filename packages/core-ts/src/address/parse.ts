@@ -1,6 +1,6 @@
 import { decodeMuxed } from "../muxed/decode";
 import { detect } from "./detect";
-import { ParseResult } from "./types";
+import { ParseResult, Warning } from "./types";
 import { AddressParseError } from "../address/errors";
 
 /** Base32 alphabet used by StrKey (RFC 4648 without padding). */
@@ -87,11 +87,23 @@ export function parse(address: string): ParseResult {
     );
   }
 
+  const warnings: Warning[] =
+    address !== up
+      ? [
+          {
+            code: "NON_CANONICAL_ADDRESS",
+            severity: "warn",
+            message: "Address normalized to uppercase",
+            normalization: { original: address, normalized: up },
+          },
+        ]
+      : [];
+
   switch (kind) {
     case "G":
-      return { kind: "G", address: up, warnings: [] };
+      return { kind: "G", address: up, warnings };
     case "C":
-      return { kind: "C", address: up, warnings: [] };
+      return { kind: "C", address: up, warnings };
     case "M": {
       try {
         const decoded = decodeMuxed(up);
@@ -100,7 +112,7 @@ export function parse(address: string): ParseResult {
           address: up,
           baseG: decoded.baseG,
           muxedId: decoded.id,
-          warnings: [],
+          warnings,
         };
       } catch (error) {
         if (error instanceof AddressParseError) {
